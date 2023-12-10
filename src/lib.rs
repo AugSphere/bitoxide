@@ -1,7 +1,4 @@
-use wasm_bindgen::{
-    prelude::*,
-    JsValue,
-};
+use wasm_bindgen::{prelude::*, JsValue};
 
 // thank you github.com/paulcdejean
 #[wasm_bindgen]
@@ -17,58 +14,31 @@ extern "C" {
     pub type NS;
 
     #[wasm_bindgen(method)]
-    fn tprint(
-        this: &NS,
-        print: &str,
-    );
+    fn tprint(this: &NS, print: &str);
 
     #[wasm_bindgen(method)]
-    fn scan(
-        this: &NS,
-        scan: Option<&str>,
-    ) -> Vec<JsValue>;
+    fn scan(this: &NS, scan: Option<&str>) -> Vec<JsValue>;
 
     #[wasm_bindgen(catch, method)]
-    fn nuke(
-        this: &NS,
-        host: &str,
-    ) -> Result<(), JsValue>;
+    fn nuke(this: &NS, host: &str) -> Result<(), JsValue>;
 
     #[wasm_bindgen(catch, method)]
-    fn brutessh(
-        this: &NS,
-        hostname: &str,
-    ) -> Result<(), JsValue>;
+    fn brutessh(this: &NS, hostname: &str) -> Result<(), JsValue>;
 
     #[wasm_bindgen(catch, method)]
-    fn ftpcrack(
-        this: &NS,
-        hostname: &str,
-    ) -> Result<(), JsValue>;
+    fn ftpcrack(this: &NS, hostname: &str) -> Result<(), JsValue>;
 
     #[wasm_bindgen(catch, method)]
-    fn relaysmtp(
-        this: &NS,
-        hostname: &str,
-    ) -> Result<(), JsValue>;
+    fn relaysmtp(this: &NS, hostname: &str) -> Result<(), JsValue>;
 
     #[wasm_bindgen(catch, method)]
-    fn httpworm(
-        this: &NS,
-        hostname: &str,
-    ) -> Result<(), JsValue>;
+    fn httpworm(this: &NS, hostname: &str) -> Result<(), JsValue>;
 
     #[wasm_bindgen(catch, method)]
-    fn sqlinject(
-        this: &NS,
-        hostname: &str,
-    ) -> Result<(), JsValue>;
+    fn sqlinject(this: &NS, hostname: &str) -> Result<(), JsValue>;
 
     #[wasm_bindgen(method)]
-    fn getServer(
-        this: &NS,
-        host: Option<&str>,
-    ) -> Server;
+    fn getServer(this: &NS, host: Option<&str>) -> Server;
 
     pub type Server;
 }
@@ -78,8 +48,7 @@ pub fn get_attribute<T>(
     field_name: &str,
     mapper: impl Fn(&JsValue) -> Option<T>,
 ) -> Result<Option<T>, JsValue> {
-    js_sys::Reflect::get(object, &JsValue::from_str(field_name))
-        .map(|x| mapper(&x))
+    js_sys::Reflect::get(object, &JsValue::from_str(field_name)).map(|x| mapper(&x))
 }
 
 #[wasm_bindgen]

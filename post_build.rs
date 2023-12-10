@@ -1,17 +1,8 @@
 use std::{
     env::var,
     fs::OpenOptions,
-    io::{
-        BufRead as _,
-        BufReader,
-        Read as _,
-        Result as IoResult,
-        Write,
-    },
-    path::{
-        Path,
-        PathBuf,
-    },
+    io::{BufRead as _, BufReader, Read as _, Result as IoResult, Write},
+    path::{Path, PathBuf},
     process::Command,
 };
 
@@ -20,8 +11,8 @@ use toml::Value;
 use tungstenite::protocol::Message;
 
 fn get_crate_name() -> String {
-    let crate_manifest_path = var("CRATE_MANIFEST_PATH")
-        .expect("Cannot read CRATE_MANIFEST_PATH environment variable");
+    let crate_manifest_path =
+        var("CRATE_MANIFEST_PATH").expect("Cannot read CRATE_MANIFEST_PATH environment variable");
 
     // read Cargo.toml to read the crate name
     let mut cargo_toml_file = OpenOptions::new()
@@ -35,8 +26,7 @@ fn get_crate_name() -> String {
         .expect("Failed to read Cargo.toml");
 
     // Parse the Cargo.toml file content
-    let cargo_toml: Value =
-        buffer.parse::<Value>().expect("Failed to parse Cargo.toml");
+    let cargo_toml: Value = buffer.parse::<Value>().expect("Failed to parse Cargo.toml");
 
     // Extract the package.name portion of the TOML file
     cargo_toml["package"]["name"].as_str().unwrap().to_owned()
@@ -74,10 +64,7 @@ fn encode_wasm_js_decl(
             let contents = "const wasm_b64 = \"".to_owned().into_bytes();
             let line_len = contents.len();
 
-            Writable {
-                contents,
-                line_len,
-            }
+            Writable { contents, line_len }
         }
 
         fn finish(mut self) -> String {
@@ -88,10 +75,7 @@ fn encode_wasm_js_decl(
     }
 
     impl Write for Writable {
-        fn write(
-            &mut self,
-            buf: &[u8],
-        ) -> IoResult<usize> {
+        fn write(&mut self, buf: &[u8]) -> IoResult<usize> {
             let mut idx = 0;
 
             while idx < buf.len() {
@@ -106,11 +90,10 @@ fn encode_wasm_js_decl(
 
                 let chars_left_on_buffer = buf.len() - idx;
 
-                let chars_to_write =
-                    chars_left_on_line.min(chars_left_on_buffer);
+                let chars_to_write = chars_left_on_line.min(chars_left_on_buffer);
 
                 self.contents
-                    .write(&buf[idx .. idx + chars_to_write])
+                    .write(&buf[idx..idx + chars_to_write])
                     .unwrap();
                 idx += chars_to_write;
                 self.line_len += chars_to_write;
@@ -149,10 +132,8 @@ fn encode_wasm_js_decl(
     // encode
     let mut writable = Writable::new();
     {
-        let mut encoder = EncoderWriter::new(
-            &mut writable,
-            &base64::engine::general_purpose::STANDARD,
-        );
+        let mut encoder =
+            EncoderWriter::new(&mut writable, &base64::engine::general_purpose::STANDARD);
 
         for byte in wasm_file.bytes() {
             encoder.write_all(&[byte.unwrap()]).unwrap();
@@ -164,11 +145,7 @@ fn encode_wasm_js_decl(
     writable.finish()
 }
 
-fn join_with_binder(
-    js_str: &mut String,
-    wasm_output: &Path,
-    crate_name: &str,
-) {
+fn join_with_binder(js_str: &mut String, wasm_output: &Path, crate_name: &str) {
     let mut wasm_file = OpenOptions::new()
         .read(true)
         .open(wasm_output.join(format!("{}.js", crate_name)))
@@ -183,7 +160,7 @@ fn join_with_binder(
             .expect("Cannot read the js file.")
         {
             0 => break,
-            _ => {},
+            _ => {}
         }
 
         // stop reading from here. we'll have our own initializer.
@@ -201,14 +178,12 @@ fn main() {
     let crate_target_dir = var("CRATE_TARGET_DIR")
         .map(|var| PathBuf::from(var))
         .expect("Cannot read CRATE_TARGET_DIR environment variable");
-    let profile = var("CRATE_PROFILE")
-        .expect("Cannot read CRATE_PROFILE environment variable");
-    let target_triple = var("CRATE_TARGET_TRIPLE")
-        .expect("Cannot read CRATE_TARGET_TRIPLE environment variable");
+    let profile = var("CRATE_PROFILE").expect("Cannot read CRATE_PROFILE environment variable");
+    let target_triple =
+        var("CRATE_TARGET_TRIPLE").expect("Cannot read CRATE_TARGET_TRIPLE environment variable");
 
     let crate_name = get_crate_name();
-    let wasm_path =
-        get_wasm_path(&crate_name, &crate_target_dir, &profile, &target_triple);
+    let wasm_path = get_wasm_path(&crate_name, &crate_target_dir, &profile, &target_triple);
 
     let wasm_output = crate_target_dir.join("wasm_output");
 
@@ -226,21 +201,14 @@ fn main() {
     if var("OUTPUT_MODE").as_deref() == Ok("stdout") {
         println!("{}", wasm_b64);
         eprintln!("Written to stdout. Please copy the output.");
-    }
-    else {
+    } else {
         post_to_websocket(&*wasm_b64, 7953, &*crate_name);
     }
 }
 
-fn post_to_websocket(
-    contents: &str,
-    port_number: u16,
-    crate_name: &str,
-) {
+fn post_to_websocket(contents: &str, port_number: u16, crate_name: &str) {
     // start the websocket server
-    let server =
-        std::net::TcpListener::bind(&*format!("127.0.0.1:{}", port_number))
-            .unwrap();
+    let server = std::net::TcpListener::bind(&*format!("127.0.0.1:{}", port_number)).unwrap();
 
     eprintln!("Listening on port 7953...");
 
