@@ -10,10 +10,7 @@ use base64::write::EncoderWriter;
 use toml::Value;
 use tungstenite::protocol::Message;
 
-fn get_crate_name() -> String {
-    let crate_manifest_path =
-        var("CRATE_MANIFEST_PATH").expect("Cannot read CRATE_MANIFEST_PATH environment variable");
-
+fn get_crate_name(crate_manifest_path: &str) -> String {
     // read Cargo.toml to read the crate name
     let mut cargo_toml_file = OpenOptions::new()
         .read(true)
@@ -174,16 +171,23 @@ fn join_with_binder(js_str: &mut String, wasm_output: &Path, crate_name: &str) {
     *js_str += include_str!("./addendum.js");
 }
 
-fn main() {
-    let crate_target_dir = var("CRATE_TARGET_DIR")
-        .map(|var| PathBuf::from(var))
-        .expect("Cannot read CRATE_TARGET_DIR environment variable");
-    let profile = var("CRATE_PROFILE").expect("Cannot read CRATE_PROFILE environment variable");
-    let target_triple =
-        var("CRATE_TARGET_TRIPLE").expect("Cannot read CRATE_TARGET_TRIPLE environment variable");
+struct PostBuildArgs {
+    crate_target_dir: PathBuf,
+    profile: String,
+    target_triple: String,
+    debug: bool,
+}
+
+pub fn wasm_to_js(args: PostBuildArgs) {
+    //let crate_target_dir = var("CRATE_TARGET_DIR")
+    //    .map(|var| PathBuf::from(var))
+    //    .expect("Cannot read CRATE_TARGET_DIR environment variable");
+    //let profile = var("CRATE_PROFILE").expect("Cannot read CRATE_PROFILE environment variable");
+    //let target_triple =
+    //    var("CRATE_TARGET_TRIPLE").expect("Cannot read CRATE_TARGET_TRIPLE environment variable");
 
     let crate_name = get_crate_name();
-    let wasm_path = get_wasm_path(&crate_name, &crate_target_dir, &profile, &target_triple);
+    let wasm_path = get_wasm_path(&crate_name, &args.crate_target_dir, &args.profile, &args.target_triple);
 
     let wasm_output = crate_target_dir.join("wasm_output");
 
@@ -192,18 +196,10 @@ fn main() {
         &*wasm_path,
         &*wasm_output,
         &*crate_name,
-        var("DEBUG").as_deref() == Ok("true"),
+        args.debug,
     );
 
-    // join the contents of wasm_b64 with the binder output from the bindgen
-    join_with_binder(&mut wasm_b64, &*wasm_output, &*crate_name);
-
-    if var("OUTPUT_MODE").as_deref() == Ok("stdout") {
-        println!("{}", wasm_b64);
-        eprintln!("Written to stdout. Please copy the output.");
-    } else {
-        post_to_websocket(&*wasm_b64, 7953, &*crate_name);
-    }
+    post_to_websocket(&*wasm_b64, 7953, &*crate_name);
 }
 
 fn post_to_websocket(contents: &str, port_number: u16, crate_name: &str) {
