@@ -171,33 +171,28 @@ fn join_with_binder(js_str: &mut String, wasm_output: &Path, crate_name: &str) {
     *js_str += include_str!("./addendum.js");
 }
 
-struct PostBuildArgs {
-    crate_target_dir: PathBuf,
-    profile: String,
-    target_triple: String,
-    debug: bool,
+pub struct PostBuildArgs {
+    pub crate_name: String,
+    pub crate_target_dir: PathBuf,
+    pub profile: String,
+    pub target_triple: String,
+    pub debug: bool,
 }
 
 pub fn wasm_to_js(args: PostBuildArgs) {
-    //let crate_target_dir = var("CRATE_TARGET_DIR")
-    //    .map(|var| PathBuf::from(var))
-    //    .expect("Cannot read CRATE_TARGET_DIR environment variable");
-    //let profile = var("CRATE_PROFILE").expect("Cannot read CRATE_PROFILE environment variable");
-    //let target_triple =
-    //    var("CRATE_TARGET_TRIPLE").expect("Cannot read CRATE_TARGET_TRIPLE environment variable");
+    let crate_name = args.crate_name;
+    let wasm_path = get_wasm_path(
+        &crate_name,
+        &args.crate_target_dir,
+        &args.profile,
+        &args.target_triple,
+    );
 
-    let crate_name = get_crate_name();
-    let wasm_path = get_wasm_path(&crate_name, &args.crate_target_dir, &args.profile, &args.target_triple);
-
-    let wasm_output = crate_target_dir.join("wasm_output");
+    let wasm_output = args.crate_target_dir.join("wasm_output");
 
     // read the contents of the javascript file
-    let mut wasm_b64 = encode_wasm_js_decl(
-        &*wasm_path,
-        &*wasm_output,
-        &*crate_name,
-        args.debug,
-    );
+    let mut wasm_b64 = encode_wasm_js_decl(&*wasm_path, &*wasm_output, &*crate_name, args.debug);
+    join_with_binder(&mut wasm_b64, &wasm_output, &crate_name);
 
     post_to_websocket(&*wasm_b64, 7953, &*crate_name);
 }
