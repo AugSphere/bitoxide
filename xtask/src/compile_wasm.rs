@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use cargo::{
     core::compiler::{CompileKind, CompileMode, CompileTarget, MessageFormat},
@@ -7,7 +7,7 @@ use cargo::{
     util::config::Config,
 };
 
-pub fn compile_wasm_packages(project_root: PathBuf) -> Vec<String> {
+pub fn compile_wasm_packages(project_root: &Path) -> Vec<String> {
     let ignored_packages = vec!["bitoxide".to_owned(), "xtask".to_owned()];
     let cargo_config = Config::default().expect("Failed to create default cargo config");
     let workspace = Workspace::new(project_root.join("Cargo.toml").as_path(), &cargo_config)

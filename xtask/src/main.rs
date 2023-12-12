@@ -26,26 +26,22 @@ enum Commands {
 fn main() -> Result<(), DynError> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Codegen {} => codegen()?,
+        Commands::Codegen {} => codegen(),
         Commands::LaunchServer {} => (),
     }
     Ok(())
 }
 
-fn codegen() -> Result<(), DynError> {
-    let wasm_package_names = compile_wasm::compile_wasm_packages(project_root());
+fn codegen() -> () {
+    let root = project_root();
+    let wasm_package_names = compile_wasm::compile_wasm_packages(&root);
+    let crate_target_dir = root.join("target");
+    let profile = "release";
+    let debug = false;
     for package_name in wasm_package_names {
-        let args = bindgen::PostBuildArgs {
-            crate_name: package_name.to_owned(),
-            crate_target_dir: project_root().join("target"),
-            profile: "release".to_owned(),
-            target_triple: "wasm32-unknown-unknown".to_owned(),
-            debug: false,
-        };
-        bindgen::wasm_to_js(args);
+        bindgen::wasm_to_js(&package_name, &crate_target_dir, &profile, debug);
     }
-
-    Ok(())
+    ()
 }
 
 fn project_root() -> PathBuf {

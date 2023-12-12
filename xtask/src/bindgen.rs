@@ -1,5 +1,4 @@
 use std::{
-    env::var,
     fs::OpenOptions,
     io::{BufRead as _, BufReader, Read as _, Result as IoResult, Write},
     path::{Path, PathBuf},
@@ -7,27 +6,7 @@ use std::{
 };
 
 use base64::write::EncoderWriter;
-use toml::Value;
 use tungstenite::protocol::Message;
-
-fn get_crate_name(crate_manifest_path: &str) -> String {
-    // read Cargo.toml to read the crate name
-    let mut cargo_toml_file = OpenOptions::new()
-        .read(true)
-        .open(&format!("{}", crate_manifest_path))
-        .expect("Cannot open Cargo.toml");
-
-    let mut buffer = String::new();
-    cargo_toml_file
-        .read_to_string(&mut buffer)
-        .expect("Failed to read Cargo.toml");
-
-    // Parse the Cargo.toml file content
-    let cargo_toml: Value = buffer.parse::<Value>().expect("Failed to parse Cargo.toml");
-
-    // Extract the package.name portion of the TOML file
-    cargo_toml["package"]["name"].as_str().unwrap().to_owned()
-}
 
 fn get_wasm_path(
     crate_name: &str,
@@ -171,27 +150,13 @@ fn join_with_binder(js_str: &mut String, wasm_output: &Path, crate_name: &str) {
     *js_str += include_str!("./addendum.js");
 }
 
-pub struct PostBuildArgs {
-    pub crate_name: String,
-    pub crate_target_dir: PathBuf,
-    pub profile: String,
-    pub target_triple: String,
-    pub debug: bool,
-}
-
-pub fn wasm_to_js(args: PostBuildArgs) {
-    let crate_name = args.crate_name;
-    let wasm_path = get_wasm_path(
-        &crate_name,
-        &args.crate_target_dir,
-        &args.profile,
-        &args.target_triple,
-    );
-
-    let wasm_output = args.crate_target_dir.join("wasm_output");
+pub fn wasm_to_js(crate_name: &str, crate_target_dir: &Path, profile: &str, debug: bool) {
+    let target_triple = "wasm32-unknown-unknown".to_owned();
+    let wasm_path = get_wasm_path(&crate_name, &crate_target_dir, &profile, &target_triple);
+    let wasm_output = crate_target_dir.join("wasm_output");
 
     // read the contents of the javascript file
-    let mut wasm_b64 = encode_wasm_js_decl(&*wasm_path, &*wasm_output, &*crate_name, args.debug);
+    let mut wasm_b64 = encode_wasm_js_decl(&*wasm_path, &*wasm_output, &*crate_name, debug);
     join_with_binder(&mut wasm_b64, &wasm_output, &crate_name);
 
     post_to_websocket(&*wasm_b64, 7953, &*crate_name);
