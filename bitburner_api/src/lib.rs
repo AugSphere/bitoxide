@@ -1,4 +1,6 @@
-use wasm_bindgen::{prelude::*, JsValue};
+pub extern crate js_sys;
+pub extern crate wasm_bindgen;
+pub use wasm_bindgen::{prelude::*, JsValue};
 
 // thank you github.com/paulcdejean
 #[wasm_bindgen]

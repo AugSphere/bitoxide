@@ -6,7 +6,6 @@ use std::{
 };
 
 use base64::write::EncoderWriter;
-use tungstenite::protocol::Message;
 
 fn get_wasm_path(
     crate_name: &str,
@@ -158,33 +157,4 @@ pub fn wasm_to_js(crate_name: &str, crate_target_dir: &Path, profile: &str, debu
     // read the contents of the javascript file
     let mut wasm_b64 = encode_wasm_js_decl(&*wasm_path, &*wasm_output, &*crate_name, debug);
     join_with_binder(&mut wasm_b64, &wasm_output, &crate_name);
-
-    post_to_websocket(&*wasm_b64, 7953, &*crate_name);
-}
-
-fn post_to_websocket(contents: &str, port_number: u16, crate_name: &str) {
-    // start the websocket server
-    let server = std::net::TcpListener::bind(&*format!("127.0.0.1:{}", port_number)).unwrap();
-
-    eprintln!("Listening on port 7953...");
-
-    let stream = server.incoming().next().unwrap();
-    let mut websocket = tungstenite::accept(stream.unwrap()).unwrap();
-
-    eprintln!("Listener found. Uploading...");
-    let message = serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "pushFile",
-        "params": {
-            "filename": format!("{}.js", crate_name),
-            "content": contents,
-            "server": "home",
-        }
-    })
-    .to_string();
-
-    websocket.write_message(Message::Text(message)).unwrap();
-
-    websocket.close(None).unwrap();
 }

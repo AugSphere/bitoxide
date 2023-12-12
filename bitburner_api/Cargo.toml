@@ -1,16 +1,10 @@
 [package]
-name = "bitoxide"
+name = "bitburner_api"
 version = "0.1.0"
-authors = ["F5XS", "AugSphere"]
 edition = "2021"
 
-
-[workspace]
-members = [
-    "bitburner_api",
-    "xtask",
-    "hello",
-]
+[lib]
+crate-type = ["lib"]
 
 [dependencies]
 js-sys = "0.3"

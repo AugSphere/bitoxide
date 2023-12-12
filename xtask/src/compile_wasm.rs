@@ -8,7 +8,11 @@ use cargo::{
 };
 
 pub fn compile_wasm_packages(project_root: &Path) -> Vec<String> {
-    let ignored_packages = vec!["bitoxide".to_owned(), "xtask".to_owned()];
+    let ignored_packages = vec![
+        "bitoxide".to_owned(),
+        "xtask".to_owned(),
+        "bitburner_api".to_owned(),
+    ];
     let cargo_config = Config::default().expect("Failed to create default cargo config");
     let workspace = Workspace::new(project_root.join("Cargo.toml").as_path(), &cargo_config)
         .expect("Failed to create a cargo workspace");
