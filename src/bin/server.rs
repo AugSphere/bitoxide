@@ -1,10 +1,46 @@
 use bitoxide::{file_watcher::debouncing_file_watcher, server_lib::serve};
-
+use clap::Parser;
+use futures::{channel::mpsc::channel, executor::LocalPool, task::LocalSpawnExt};
 use std::{fs::create_dir_all, path::Path};
 
-use futures::{channel::mpsc::channel, executor::LocalPool, task::LocalSpawnExt};
+/// A server to watch wasm output and upload it to Bitburner
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    #[arg(short, long, default_value_t = 7953)]
+    /// TCP port used for Bitburner connection
+    port: u16,
+}
 
 pub fn main() {
+    let cli = Cli::parse();
+    let port_number: u16 = cli.port;
+
+    println!("Starting the server, use Ctrl-C to quit");
+    let quit_rx = set_ctrl_handler();
+
+    let wasm_path = Path::new(&env!("CARGO_MANIFEST_DIR"))
+        .join("target")
+        .join("wasm_output");
+
+    if !wasm_path.exists() {
+        println!("Directory {wasm_path:?} does not exist, creating it");
+        create_dir_all(&wasm_path).expect("Failed to create wasm_output dir");
+    }
+
+    println!("Setting up file watch on {wasm_path:?}...");
+    let (_watcher, rx) = debouncing_file_watcher(&wasm_path);
+
+    println!("Listening on port {port_number}...");
+    let address = ([127, 0, 0, 1], port_number).into();
+    let mut pool = LocalPool::new();
+    pool.spawner()
+        .spawn_local(serve(rx, quit_rx, address))
+        .expect("Failed to set up file watcher task");
+    pool.run();
+}
+
+fn set_ctrl_handler() -> futures::channel::mpsc::Receiver<()> {
     let (mut quit_tx, quit_rx) = channel::<()>(1);
     ctrlc::set_handler(move || {
         println!("");
@@ -13,27 +49,5 @@ pub fn main() {
             .expect("Failed to send shutdown command")
     })
     .expect("Error setting Ctrl-C handler");
-    println!("Starting server, use Ctrl-C to quit");
-
-    let port_number: u16 = 7953;
-    let path = Path::new(".").join("target").join("wasm_output");
-    let path_str = path
-        .to_str()
-        .expect("Watched path can't be converted to string");
-
-    if !path.exists() {
-        println!("Directory {path_str} does not exist, creating it");
-        create_dir_all(&path).expect("Failed to create wasm_output dir");
-    }
-
-    println!("Setting up file watch on {path_str}...");
-    let (_debouncer, rx) = debouncing_file_watcher(&path);
-
-    println!("Listening on port {port_number}...");
-    let addr = format!("127.0.0.1:{}", port_number);
-    let mut pool = LocalPool::new();
-    pool.spawner()
-        .spawn_local(serve(rx, quit_rx, addr))
-        .expect("Failed to set up file watcher task");
-    pool.run();
+    quit_rx
 }
