@@ -1,6 +1,6 @@
 use std::{
     fs::OpenOptions,
-    io::{BufRead as _, BufReader, Read as _, Result as IoResult, Write},
+    io::{BufRead as _, BufReader, Read as _, Result as IoResult, Seek, Write},
     path::{Path, PathBuf},
     process::Command,
 };
@@ -27,7 +27,7 @@ fn encode_wasm_js_decl(
     wasm_path: &Path,
     wasm_output: &Path,
     crate_name: &str,
-    keep_debug: bool,
+    debug: bool,
 ) -> String {
     struct Writable {
         contents: Vec<u8>,
@@ -92,7 +92,8 @@ fn encode_wasm_js_decl(
         .arg("--out-dir")
         .arg(&wasm_output);
 
-    if keep_debug {
+    if debug {
+        command.arg("--debug");
         command.arg("--keep-debug");
     }
 
@@ -120,17 +121,19 @@ fn encode_wasm_js_decl(
     writable.finish()
 }
 
-fn join_with_binder(js_str: &mut String, wasm_output: &Path, crate_name: &str) {
-    let mut wasm_file = OpenOptions::new()
+fn join_with_binder(mut js_str: String, wasm_output: &Path, crate_name: &str) {
+    let mut js_file = OpenOptions::new()
         .read(true)
+        .write(true)
         .open(wasm_output.join(format!("{}.js", crate_name)))
-        .map(|file| BufReader::new(file))
         .expect("Cannot open the bundler js file");
+    let mut reader = BufReader::new(&js_file);
 
     let mut buffer = String::new();
+    js_str += "\n";
     loop {
         buffer.clear();
-        match wasm_file
+        match reader
             .read_line(&mut buffer)
             .expect("Cannot read the js file.")
         {
@@ -143,18 +146,27 @@ fn join_with_binder(js_str: &mut String, wasm_output: &Path, crate_name: &str) {
             break;
         }
 
-        *js_str += &buffer;
+        js_str += &buffer;
     }
 
-    *js_str += include_str!("./addendum.js");
+    js_str += include_str!("./addendum.js");
+    js_file
+        .rewind()
+        .expect("Failed to rewind to start of js file");
+    js_file
+        .write_all(js_str.as_bytes())
+        .expect("Failed to write updated js file")
 }
 
-pub fn wasm_to_js(crate_name: &str, crate_target_dir: &Path, profile: &str, debug: bool) {
+pub fn wasm_to_js(crate_name: &str, crate_target_dir: &Path, profile: &str) {
     let target_triple = "wasm32-unknown-unknown".to_owned();
     let wasm_path = get_wasm_path(&crate_name, &crate_target_dir, &profile, &target_triple);
     let wasm_output = crate_target_dir.join("wasm_output");
-
-    // read the contents of the javascript file
-    let mut wasm_b64 = encode_wasm_js_decl(&*wasm_path, &*wasm_output, &*crate_name, debug);
-    join_with_binder(&mut wasm_b64, &wasm_output, &crate_name);
+    let wasm_b64 = encode_wasm_js_decl(
+        &*wasm_path,
+        &*wasm_output,
+        &*crate_name,
+        profile != "release",
+    );
+    join_with_binder(wasm_b64, &wasm_output, &crate_name);
 }
