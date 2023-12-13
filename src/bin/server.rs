@@ -1,23 +1,28 @@
 use std::{
     ffi::OsString,
-    fs::File,
+    fs::{create_dir_all, File},
     io::Read,
-    net::TcpStream,
     path::{Path, PathBuf},
     time::Duration,
 };
+
+use async_std::net::TcpStream;
 
 use futures::{
     channel::mpsc::{channel, Receiver},
     executor::LocalPool,
     select,
+    stream::StreamExt,
     task::LocalSpawnExt,
+    FutureExt, SinkExt,
 };
 use notify_debouncer_mini::notify::{self, RecursiveMode};
 use notify_debouncer_mini::{new_debouncer_opt, Config};
 
-use futures::stream::StreamExt;
-use tungstenite::{Message, WebSocket};
+use async_tungstenite::{
+    tungstenite::{self, Message},
+    WebSocketStream,
+};
 
 type DebouncedPollWatcher = notify_debouncer_mini::Debouncer<notify::PollWatcher>;
 type WatcherEvents = Vec<notify_debouncer_mini::DebouncedEvent>;
@@ -59,8 +64,23 @@ fn js_paths_in(events: Result<WatcherEvents, notify::Error>) -> Vec<PathBuf> {
         .collect()
 }
 
-fn send_file(websocket: &mut WebSocket<TcpStream>, path: &Path) -> Result<(), DynError> {
-    let mut file = File::open(path)?;
+async fn send_files(
+    websocket: &mut WebSocketStream<TcpStream>,
+    paths: Vec<PathBuf>,
+) -> Result<(), DynError> {
+    let mut results = vec![];
+    for path in paths {
+        let result = send_single_file(websocket, &path).await;
+        results.push(result);
+    }
+    results.into_iter().collect()
+}
+
+async fn send_single_file(
+    websocket: &mut WebSocketStream<TcpStream>,
+    path: &Path,
+) -> Result<(), DynError> {
+    let mut file = File::open(&path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
     drop(file);
@@ -69,13 +89,13 @@ fn send_file(websocket: &mut WebSocket<TcpStream>, path: &Path) -> Result<(), Dy
         .ok_or("Not a file")?
         .to_str()
         .expect("Invalid filename");
-    let reply = post_to_websocket(websocket, filename, &contents)?;
-    println!("{:?}: {reply}", path.file_name());
+    let reply = post_to_websocket(websocket, filename, &contents).await?;
+    println!("{filename}: {reply}");
     Ok(())
 }
 
-fn post_to_websocket(
-    websocket: &mut WebSocket<TcpStream>,
+async fn post_to_websocket(
+    websocket: &mut WebSocketStream<TcpStream>,
     filename: &str,
     contents: &str,
 ) -> Result<Message, tungstenite::Error> {
@@ -91,8 +111,9 @@ fn post_to_websocket(
     })
     .to_string();
 
-    websocket.send(Message::Text(message))?;
-    websocket.read()
+    websocket.send(Message::Text(message)).await?;
+    let response = websocket.next().await.unwrap();
+    response
 }
 
 pub fn main() {
@@ -104,34 +125,44 @@ pub fn main() {
             .expect("Failed to send shutdown command")
     })
     .expect("Error setting Ctrl-C handler");
+    println!("Starting server, use Ctrl-C to quit");
 
     let port_number: u16 = 7953;
     let path = Path::new(".").join("target").join("wasm_output");
     let path_str = path
         .to_str()
-        .expect("watch path can't be converted to string");
+        .expect("Watched path can't be converted to string");
 
-    let server = std::net::TcpListener::bind(&*format!("127.0.0.1:{}", port_number)).unwrap();
+    if !path.exists() {
+        println!("Directory {path_str} does not exist, creating it");
+        create_dir_all(&path).expect("Failed to create wasm_output dir");
+    }
 
-    println!("Listening on port {port_number}...");
-
-    let stream = server.incoming().next().unwrap();
-    let mut websocket = tungstenite::accept(stream.unwrap()).unwrap();
-    let mut send_to_socket =
-        move |path: PathBuf| -> Result<(), DynError> { send_file(&mut websocket, &path) };
-
-    println!("Listener found. Watching and uploading files from {path_str}...",);
-
+    println!("Setting up file watch on {path_str}...");
     let (_debouncer, mut rx) = debouncing_file_watcher(&path);
 
-    let mut pool = LocalPool::new();
+    println!("Listening on port {port_number}...");
+    let addr = format!("127.0.0.1:{}", port_number);
     let watch = async move {
+        let server = async_std::net::TcpListener::bind(addr)
+            .await
+            .expect("Could not bind to port");
+
+        let stream = select! {
+            res = server.accept().fuse() => res.expect("Failed to establish a connection to Bitburner").0,
+            _ = quit_rx.next() => return,
+        };
+
+        let mut websocket = async_tungstenite::accept_async(stream)
+            .await
+            .expect("Failed to create a websocket");
+
+        println!("Connected, uploading changed js scripts from wasm_output");
         loop {
             select! {
                 events = rx.next() => {
                     let js_paths = js_paths_in(events.expect("Missing events in stream"));
-                    let send_all = js_paths.into_iter().map(&mut send_to_socket);
-                    let result: Result<Vec<_>, DynError> = send_all.into_iter().collect();
+                    let result = send_files(&mut websocket, js_paths).await;
                     if let Err(err) = result {
                         eprintln!("Failed to send files: {err}");
                     }
@@ -140,6 +171,7 @@ pub fn main() {
             }
         }
     };
+    let mut pool = LocalPool::new();
     pool.spawner()
         .spawn_local(watch)
         .expect("Failed to set up file watcher task");
