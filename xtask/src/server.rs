@@ -1,3 +1,4 @@
+use log;
 use std::{
     fs::{create_dir_all, File},
     io::Read,
@@ -32,18 +33,18 @@ struct PushFileResponse {
 type DynError = Box<dyn std::error::Error>;
 
 pub fn launch_server(port: u16, watch_path: &Path) -> ExitCode {
-    println!("Starting the server, use Ctrl-C to quit");
+    log::info!("Starting the server, use Ctrl-C to quit");
     let quit_rx = set_ctrl_handler();
 
     if !watch_path.exists() {
-        println!("Directory {watch_path:?} does not exist, creating it");
+        log::info!("Directory {watch_path:?} does not exist, creating it");
         create_dir_all(&watch_path).expect("Failed to create wasm_output dir");
     }
 
-    println!("Setting up file watch on {watch_path:?}...");
+    log::info!("Setting up file watch on {watch_path:?}...");
     let (_watcher, rx) = debouncing_file_watcher(&watch_path);
 
-    println!("Listening on port {port}...");
+    log::info!("Listening on port {port}...");
     let address = ([127, 0, 0, 1], port).into();
     let mut pool = LocalPool::new();
     pool.spawner()
@@ -79,7 +80,7 @@ async fn serve(mut watch_event_rx: WatchReceiver, mut quit_rx: Receiver<()>, add
         .await
         .expect("Failed to create a websocket");
 
-    println!(
+    log::info!(
         "Connected, will upload new js script files, run `cargo xtask codegen` to generate them"
     );
     loop {
@@ -88,7 +89,7 @@ async fn serve(mut watch_event_rx: WatchReceiver, mut quit_rx: Receiver<()>, add
                 let js_paths = js_paths_in(events.expect("Missing events in stream"));
                 let result = send_files(&mut websocket, js_paths).await;
                 if let Err(err) = result {
-                    eprintln!("Failed to send files: {err}");
+                    log::error!("Failed to send files: {err}");
                 }
             },
             _ = quit_rx.next() => break,
@@ -127,7 +128,7 @@ async fn send_single_file(
     };
     let response =
         serde_json::from_str::<PushFileResponse>(&json).expect("Unexpected response contents");
-    println!("Sending {filename}: {}", response.result);
+    log::info!("Sending {filename}: {}", response.result);
     Ok(())
 }
 
