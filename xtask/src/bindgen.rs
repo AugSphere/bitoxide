@@ -7,18 +7,23 @@ use std::{
 
 use base64::write::EncoderWriter;
 
-fn get_wasm_path(
-    crate_name: &str,
-    crate_target_dir: &Path,
-    profile: &str,
-    target_triple: &str,
-) -> PathBuf {
-    let mut path = crate_target_dir.join(target_triple);
-    path.push(profile);
-    path.push(crate_name);
-    path.set_extension("wasm");
+use crate::{project_root, Profile};
 
-    path
+pub fn generate_js_bindings(profile: Profile, wasm_paths: Vec<PathBuf>) {
+    for path in wasm_paths {
+        wasm_to_js(&path, profile == Profile::Dev);
+    }
+}
+
+fn wasm_to_js(wasm_path: &Path, debug: bool) {
+    println!(
+        "Generating js {} debug from {wasm_path:?}",
+        if debug { "with" } else { "without" }
+    );
+    let crate_name = wasm_path.file_stem().unwrap().to_str().unwrap().to_owned();
+    let wasm_output = project_root().join("target").join("wasm_output");
+    let wasm_b64 = encode_wasm_js_decl(&*wasm_path, &*wasm_output, &*crate_name, debug);
+    join_with_binder(wasm_b64, &wasm_output, &crate_name);
 }
 
 /// Creates the WASM file, encodes it into base64, and creates a JavaScript
@@ -156,17 +161,4 @@ fn join_with_binder(mut js_str: String, wasm_output: &Path, crate_name: &str) {
     js_file
         .write_all(js_str.as_bytes())
         .expect("Failed to write updated js file")
-}
-
-pub fn wasm_to_js(crate_name: &str, crate_target_dir: &Path, profile: &str) {
-    let target_triple = "wasm32-unknown-unknown".to_owned();
-    let wasm_path = get_wasm_path(&crate_name, &crate_target_dir, &profile, &target_triple);
-    let wasm_output = crate_target_dir.join("wasm_output");
-    let wasm_b64 = encode_wasm_js_decl(
-        &*wasm_path,
-        &*wasm_output,
-        &*crate_name,
-        profile != "release",
-    );
-    join_with_binder(wasm_b64, &wasm_output, &crate_name);
 }

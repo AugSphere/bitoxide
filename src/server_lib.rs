@@ -1,7 +1,8 @@
 use std::{
     fs::File,
     io::Read,
-    path::{Path, PathBuf}, net::SocketAddr,
+    net::SocketAddr,
+    path::{Path, PathBuf},
 };
 
 use async_std::net::TcpStream;
@@ -17,7 +18,11 @@ use crate::file_watcher::{js_paths_in, WatchReceiver};
 
 type DynError = Box<dyn std::error::Error>;
 
-pub async fn serve(mut watch_event_rx: WatchReceiver, mut quit_rx: Receiver<()>, address: SocketAddr) {
+pub async fn serve(
+    mut watch_event_rx: WatchReceiver,
+    mut quit_rx: Receiver<()>,
+    address: SocketAddr,
+) {
     let server = async_std::net::TcpListener::bind(address)
         .await
         .expect("Could not bind to port");
@@ -31,7 +36,9 @@ pub async fn serve(mut watch_event_rx: WatchReceiver, mut quit_rx: Receiver<()>,
         .await
         .expect("Failed to create a websocket");
 
-    println!("Connected, will upload new js script files, run `cargo xtask codegen` to generate them");
+    println!(
+        "Connected, will upload new js script files, run `cargo xtask codegen` to generate them"
+    );
     loop {
         select! {
             events = watch_event_rx.next() => {

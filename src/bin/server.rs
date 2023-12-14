@@ -8,7 +8,7 @@ use std::{fs::create_dir_all, path::Path};
 #[command(author, version, about, long_about = None)]
 struct Cli {
     #[arg(short, long, default_value_t = 7953)]
-    /// TCP port used for Bitburner connection
+    /// TCP port used for the Bitburner connection
     port: u16,
 }
 
