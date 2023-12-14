@@ -1,7 +1,11 @@
-use bitoxide::{file_watcher::debouncing_file_watcher, server_lib::serve};
 use clap::Parser;
 use futures::{channel::mpsc::channel, executor::LocalPool, task::LocalSpawnExt};
 use std::{fs::create_dir_all, path::Path};
+
+use crate::{file_watcher::debouncing_file_watcher, server::serve};
+
+mod file_watcher;
+mod server;
 
 /// A server to watch wasm output and upload it to Bitburner
 #[derive(Parser)]
