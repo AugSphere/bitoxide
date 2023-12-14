@@ -1,8 +1,11 @@
 mod bindgen;
+mod cli;
 mod compile_wasm;
 
+use clap::Parser;
+use cli::Profile;
+
 use bindgen::generate_js_bindings;
-use clap::{Parser, Subcommand, ValueEnum};
 use std::{
     env,
     ffi::OsString,
@@ -10,53 +13,10 @@ use std::{
     process::{ExitCode, ExitStatus},
 };
 
-/// xtask handler for generating WASM and js from workspace packages
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Generates wasm js files for workspace packages
-    Codegen {
-        #[arg(long, default_value = "release")]
-        profile: Profile,
-    },
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-pub enum Profile {
-    /// Release mode, artifacts go in target/wasm32-unknown-unknown/release/
-    Release,
-    /// Dev mode, artifacts go in target/wasm32-unknown-unknown/debug/
-    Dev,
-}
-
-impl Profile {
-    fn artifact_stem(&self) -> String {
-        match self {
-            Profile::Release => "release".to_owned(),
-            Profile::Dev => "debug".to_owned(),
-        }
-    }
-}
-
-impl ToString for Profile {
-    fn to_string(&self) -> String {
-        match self {
-            Profile::Release => "release".to_owned(),
-            Profile::Dev => "dev".to_owned(),
-        }
-    }
-}
-
 fn main() -> ExitCode {
-    let cli = Cli::parse();
+    let cli = cli::Cli::parse();
     let status = match cli.command {
-        Commands::Codegen { profile } => codegen(profile),
+        cli::Commands::Codegen { profile } => codegen(profile),
     };
     let code = status.code();
     match code {
