@@ -10,10 +10,17 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Generates wasm js files for workspace packages
+    /// Generate wasm js files for workspace packages
     Codegen {
         #[arg(long, default_value = "release")]
         profile: Profile,
+    },
+
+    /// Start a server to watch wasm output and upload it to Bitburner
+    Serve {
+        #[arg(short, long, default_value_t = 7953)]
+        /// TCP port used for the Bitburner connection
+        port: u16,
     },
 }
 

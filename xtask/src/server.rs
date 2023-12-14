@@ -1,28 +1,64 @@
 use std::{
-    fs::File,
+    fs::{create_dir_all, File},
     io::Read,
     net::SocketAddr,
     path::{Path, PathBuf},
+    process::ExitCode,
 };
 
 use async_std::net::TcpStream;
 
-use futures::{channel::mpsc::Receiver, select, stream::StreamExt, FutureExt, SinkExt};
+use futures::{
+    channel::mpsc::channel, channel::mpsc::Receiver, executor::LocalPool, select,
+    stream::StreamExt, task::LocalSpawnExt, FutureExt, SinkExt,
+};
 
 use async_tungstenite::{
     tungstenite::{self, Message},
     WebSocketStream,
 };
 
-use crate::file_watcher::{js_paths_in, WatchReceiver};
+mod file_watcher;
+use file_watcher::debouncing_file_watcher;
+use file_watcher::{js_paths_in, WatchReceiver};
 
 type DynError = Box<dyn std::error::Error>;
 
-pub async fn serve(
-    mut watch_event_rx: WatchReceiver,
-    mut quit_rx: Receiver<()>,
-    address: SocketAddr,
-) {
+pub fn launch_server(port: u16, watch_path: &Path) -> ExitCode {
+    println!("Starting the server, use Ctrl-C to quit");
+    let quit_rx = set_ctrl_handler();
+
+    if !watch_path.exists() {
+        println!("Directory {watch_path:?} does not exist, creating it");
+        create_dir_all(&watch_path).expect("Failed to create wasm_output dir");
+    }
+
+    println!("Setting up file watch on {watch_path:?}...");
+    let (_watcher, rx) = debouncing_file_watcher(&watch_path);
+
+    println!("Listening on port {port}...");
+    let address = ([127, 0, 0, 1], port).into();
+    let mut pool = LocalPool::new();
+    pool.spawner()
+        .spawn_local(serve(rx, quit_rx, address))
+        .expect("Failed to set up file watcher task");
+    pool.run();
+    ExitCode::SUCCESS
+}
+
+fn set_ctrl_handler() -> futures::channel::mpsc::Receiver<()> {
+    let (mut quit_tx, quit_rx) = channel::<()>(1);
+    ctrlc::set_handler(move || {
+        println!("");
+        quit_tx
+            .try_send(())
+            .expect("Failed to send shutdown command")
+    })
+    .expect("Error setting Ctrl-C handler");
+    quit_rx
+}
+
+async fn serve(mut watch_event_rx: WatchReceiver, mut quit_rx: Receiver<()>, address: SocketAddr) {
     let server = async_std::net::TcpListener::bind(address)
         .await
         .expect("Could not bind to port");

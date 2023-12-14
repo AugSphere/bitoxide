@@ -7,23 +7,22 @@ use std::{
 
 use base64::write::EncoderWriter;
 
-use crate::{project_root, Profile};
+use crate::Profile;
 
-pub fn generate_js_bindings(profile: Profile, wasm_paths: Vec<PathBuf>) {
+pub fn generate_js_bindings(profile: Profile, wasm_paths: Vec<PathBuf>, output_path: &Path) {
     for path in wasm_paths {
-        wasm_to_js(&path, profile == Profile::Dev);
+        wasm_to_js(&path, output_path, profile == Profile::Dev);
     }
 }
 
-fn wasm_to_js(wasm_path: &Path, debug: bool) {
+fn wasm_to_js(wasm_path: &Path, output_path: &Path, debug: bool) {
     println!(
         "Generating js {} debug from {wasm_path:?}",
         if debug { "with" } else { "without" }
     );
     let crate_name = wasm_path.file_stem().unwrap().to_str().unwrap().to_owned();
-    let wasm_output = project_root().join("target").join("wasm_output");
-    let wasm_b64 = encode_wasm_js_decl(&*wasm_path, &*wasm_output, &*crate_name, debug);
-    join_with_binder(wasm_b64, &wasm_output, &crate_name);
+    let wasm_b64 = encode_wasm_js_decl(&*wasm_path, &*output_path, &*crate_name, debug);
+    join_with_binder(wasm_b64, output_path, &crate_name);
 }
 
 /// Creates the WASM file, encodes it into base64, and creates a JavaScript

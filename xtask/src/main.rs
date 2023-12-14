@@ -1,23 +1,32 @@
 mod bindgen;
 mod cli;
 mod compile_wasm;
+mod server;
 
 use clap::Parser;
 use cli::Profile;
 
 use bindgen::generate_js_bindings;
+use server::launch_server;
 use std::{
     env,
     ffi::OsString,
     path::{Path, PathBuf},
-    process::{ExitCode, ExitStatus},
+    process::ExitCode,
 };
 
 fn main() -> ExitCode {
     let cli = cli::Cli::parse();
-    let status = match cli.command {
+    match cli.command {
         cli::Commands::Codegen { profile } => codegen(profile),
-    };
+        cli::Commands::Serve { port } => launch_server(port, &js_output_path()),
+    }
+}
+
+fn codegen(profile: Profile) -> ExitCode {
+    let status = compile_wasm::compile_wasm_packages(profile);
+    let wasm_paths = get_wasm_artifact_paths(profile);
+    generate_js_bindings(profile, wasm_paths, &js_output_path());
     let code = status.code();
     match code {
         Some(code) => match u8::try_from(code) {
@@ -26,13 +35,6 @@ fn main() -> ExitCode {
         },
         _ => ExitCode::FAILURE,
     }
-}
-
-fn codegen(profile: Profile) -> ExitStatus {
-    let status = compile_wasm::compile_wasm_packages(profile);
-    let wasm_paths = get_wasm_artifact_paths(profile);
-    generate_js_bindings(profile, wasm_paths);
-    status
 }
 
 pub fn project_root() -> PathBuf {
@@ -48,6 +50,10 @@ pub fn artifact_path(profile: Profile) -> PathBuf {
         .join("target")
         .join("wasm32-unknown-unknown")
         .join(profile.artifact_stem())
+}
+
+pub fn js_output_path() -> PathBuf {
+    project_root().join("target").join("wasm_output")
 }
 
 pub fn get_wasm_artifact_paths(profile: Profile) -> Vec<PathBuf> {

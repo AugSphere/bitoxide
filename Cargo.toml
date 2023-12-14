@@ -1,6 +1,6 @@
 [package]
 name = "bitoxide"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["F5XS", "AugSphere"]
 edition = "2021"
 
@@ -10,12 +10,3 @@ members = [
     "xtask",
     "hello",
 ]
-
-[dependencies]
-clap = { version = "4.4", features = ["derive"] }
-serde_json = "1.0"
-notify-debouncer-mini = "0.4"
-ctrlc = "3.4"
-futures = "0.3"
-async-std = "1.12"
-async-tungstenite = "0.24"
