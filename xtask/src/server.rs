@@ -7,20 +7,27 @@ use std::{
 };
 
 use async_std::net::TcpStream;
-
-use futures::{
-    channel::mpsc::channel, channel::mpsc::Receiver, executor::LocalPool, select,
-    stream::StreamExt, task::LocalSpawnExt, FutureExt, SinkExt,
-};
-
 use async_tungstenite::{
     tungstenite::{self, Message},
     WebSocketStream,
 };
+use futures::{
+    channel::mpsc::channel, channel::mpsc::Receiver, executor::LocalPool, select,
+    stream::StreamExt, task::LocalSpawnExt, FutureExt, SinkExt,
+};
+use serde::Deserialize;
 
 mod file_watcher;
 use file_watcher::debouncing_file_watcher;
 use file_watcher::{js_paths_in, WatchReceiver};
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct PushFileResponse {
+    jsonrpc: String,
+    id: u64,
+    result: String,
+}
 
 type DynError = Box<dyn std::error::Error>;
 
@@ -115,7 +122,12 @@ async fn send_single_file(
         .to_str()
         .expect("Invalid filename");
     let reply = post_to_websocket(websocket, filename, &contents).await?;
-    println!("{filename}: {reply}");
+    let Message::Text(json) = reply else {
+        return Err("Unexpected response type from Bitburner".into());
+    };
+    let response =
+        serde_json::from_str::<PushFileResponse>(&json).expect("Unexpected response contents");
+    println!("Sending {filename}: {}", response.result);
     Ok(())
 }
 
