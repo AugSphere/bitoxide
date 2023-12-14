@@ -89,7 +89,7 @@ async fn serve(mut watch_event_rx: WatchReceiver, mut quit_rx: Receiver<()>, add
     }
 }
 
-pub async fn send_files(
+async fn send_files(
     websocket: &mut WebSocketStream<TcpStream>,
     paths: Vec<PathBuf>,
 ) -> Result<(), DynError> {
