@@ -1,40 +1,49 @@
 use log;
-use std::{
-    fs::{create_dir_all, File},
-    io::Read,
-    net::SocketAddr,
-    path::{Path, PathBuf},
-    process::ExitCode,
-};
+use std::fs;
+use std::path::PathBuf;
+use std::{fs::create_dir_all, net::SocketAddr, path::Path, process::ExitCode};
 
 use async_std::net::TcpStream;
-use async_tungstenite::{
-    tungstenite::{self, Message},
-    WebSocketStream,
-};
+use async_tungstenite::{tungstenite::Message, WebSocketStream};
 use futures::{
     channel::mpsc::channel, channel::mpsc::Receiver, executor::LocalPool, select,
     stream::StreamExt, task::LocalSpawnExt, FutureExt, SinkExt,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 mod file_watcher;
 use file_watcher::debouncing_file_watcher;
 use file_watcher::{js_paths_in, WatchReceiver};
 
-#[derive(Deserialize)]
-#[allow(dead_code)]
-struct PushFileResponse {
+mod send_files;
+use send_files::send_files;
+
+#[derive(Serialize)]
+struct RpcRequest<T> {
     jsonrpc: String,
     id: u64,
-    result: String,
+    method: String,
+    params: T,
 }
 
-type DynError = Box<dyn std::error::Error>;
+#[derive(Serialize)]
+struct PushFileParams {
+    filename: String,
+    content: String,
+    server: String,
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct RpcResponse<T> {
+    jsonrpc: String,
+    id: u64,
+    result: T,
+    error: Option<String>,
+}
 
 pub fn launch_server(port: u16, watch_path: &Path) -> ExitCode {
-    log::info!("Starting the server, use Ctrl-C to quit");
-    let quit_rx = set_ctrl_handler();
+    let mut quit_rx = set_ctrl_handler();
 
     if !watch_path.exists() {
         log::info!("Directory {watch_path:?} does not exist, creating it");
@@ -42,19 +51,47 @@ pub fn launch_server(port: u16, watch_path: &Path) -> ExitCode {
     }
 
     log::info!("Setting up file watch on {watch_path:?}...");
-    let (_watcher, rx) = debouncing_file_watcher(&watch_path);
+    let (_watcher, watch_event_rx) = debouncing_file_watcher(&watch_path);
 
-    log::info!("Listening on port {port}...");
     let address = ([127, 0, 0, 1], port).into();
+    let serve = async move {
+        let Some(mut websocket) = connect(address, &mut quit_rx).await else {
+            return;
+        };
+        stream_watched(&mut websocket, watch_event_rx, &mut quit_rx).await;
+    };
+
     let mut pool = LocalPool::new();
     pool.spawner()
-        .spawn_local(serve(rx, quit_rx, address))
+        .spawn_local(serve)
         .expect("Failed to set up file watcher task");
     pool.run();
     ExitCode::SUCCESS
 }
 
+pub fn get_definitions(port: u16, path: PathBuf) -> ExitCode {
+    let mut quit_rx = set_ctrl_handler();
+
+    let address = ([127, 0, 0, 1], port).into();
+    let send_request = async move {
+        let Some(mut websocket) = connect(address, &mut quit_rx).await else {
+            return;
+        };
+        let definitions = request_definitions(&mut websocket).await;
+        fs::write(&path, definitions).expect("Failed writing definitions to file");
+        log::info!("Definitions written to {path:?}");
+    };
+
+    let mut pool = LocalPool::new();
+    pool.spawner()
+        .spawn_local(send_request)
+        .expect("Failed to set up definition request task");
+    pool.run();
+    ExitCode::SUCCESS
+}
+
 fn set_ctrl_handler() -> futures::channel::mpsc::Receiver<()> {
+    log::info!("Running, use Ctrl-C when you want to quit");
     let (mut quit_tx, quit_rx) = channel::<()>(1);
     ctrlc::set_handler(move || {
         println!("");
@@ -66,20 +103,51 @@ fn set_ctrl_handler() -> futures::channel::mpsc::Receiver<()> {
     quit_rx
 }
 
-async fn serve(mut watch_event_rx: WatchReceiver, mut quit_rx: Receiver<()>, address: SocketAddr) {
+async fn connect(
+    address: SocketAddr,
+    quit_rx: &mut Receiver<()>,
+) -> Option<WebSocketStream<TcpStream>> {
+    log::info!("Listening on port {}...", address.port());
     let server = async_std::net::TcpListener::bind(address)
         .await
         .expect("Could not bind to port");
 
     let stream = select! {
         res = server.accept().fuse() => res.expect("Failed to establish a connection to Bitburner").0,
-        _ = quit_rx.next() => return,
+        _ = quit_rx.next() => return None,
     };
 
-    let mut websocket = async_tungstenite::accept_async(stream)
+    let websocket = async_tungstenite::accept_async(stream)
         .await
         .expect("Failed to create a websocket");
+    Some(websocket)
+}
 
+async fn request_definitions(websocket: &mut WebSocketStream<TcpStream>) -> String {
+    let request = RpcRequest::<Option<String>> {
+        jsonrpc: "2.0".to_owned(),
+        id: 1,
+        method: "getDefinitionFile".to_owned(),
+        params: None,
+    };
+    let message = serde_json::to_string(&request).expect("Failed to prepare getDefinitionFile request");
+    websocket.send(Message::Text(message)).await.unwrap();
+    let message = websocket.next().await.unwrap().unwrap();
+    let text = match message {
+        Message::Text(text) => Ok(text),
+        _ => Err("Unexpected response type from Bitburner"),
+    }
+    .unwrap();
+    let def_json =
+        serde_json::from_str::<RpcResponse<String>>(&text).expect("Unexpected response contents");
+    def_json.result
+}
+
+async fn stream_watched(
+    websocket: &mut WebSocketStream<TcpStream>,
+    mut watch_event_rx: WatchReceiver,
+    quit_rx: &mut Receiver<()>,
+) {
     log::info!(
         "Connected, will upload new js script files, run `cargo xtask codegen` to generate them"
     );
@@ -87,7 +155,7 @@ async fn serve(mut watch_event_rx: WatchReceiver, mut quit_rx: Receiver<()>, add
         select! {
             events = watch_event_rx.next() => {
                 let js_paths = js_paths_in(events.expect("Missing events in stream"));
-                let result = send_files(&mut websocket, js_paths).await;
+                let result = send_files(websocket, js_paths).await;
                 if let Err(err) = result {
                     log::error!("Failed to send files: {err}");
                 }
@@ -95,61 +163,4 @@ async fn serve(mut watch_event_rx: WatchReceiver, mut quit_rx: Receiver<()>, add
             _ = quit_rx.next() => break,
         }
     }
-}
-
-async fn send_files(
-    websocket: &mut WebSocketStream<TcpStream>,
-    paths: Vec<PathBuf>,
-) -> Result<(), DynError> {
-    let mut results = vec![];
-    for path in paths {
-        let result = send_single_file(websocket, &path).await;
-        results.push(result);
-    }
-    results.into_iter().collect()
-}
-
-async fn send_single_file(
-    websocket: &mut WebSocketStream<TcpStream>,
-    path: &Path,
-) -> Result<(), DynError> {
-    let mut file = File::open(&path)?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    drop(file);
-    let filename = path
-        .file_name()
-        .ok_or("Not a file")?
-        .to_str()
-        .expect("Invalid filename");
-    let reply = post_to_websocket(websocket, filename, &contents).await?;
-    let Message::Text(json) = reply else {
-        return Err("Unexpected response type from Bitburner".into());
-    };
-    let response =
-        serde_json::from_str::<PushFileResponse>(&json).expect("Unexpected response contents");
-    log::info!("Sending {filename}: {}", response.result);
-    Ok(())
-}
-
-async fn post_to_websocket(
-    websocket: &mut WebSocketStream<TcpStream>,
-    filename: &str,
-    contents: &str,
-) -> Result<Message, tungstenite::Error> {
-    let message = serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "pushFile",
-        "params": {
-            "filename": filename,
-            "content": contents,
-            "server": "home",
-        }
-    })
-    .to_string();
-
-    websocket.send(Message::Text(message)).await?;
-    let response = websocket.next().await.unwrap();
-    response
 }

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand, ValueEnum};
 
 /// xtask handler for generating WASM and js from workspace packages
@@ -21,6 +23,17 @@ pub enum Commands {
         #[arg(short, long, default_value_t = 7953)]
         /// TCP port used for the Bitburner connection
         port: u16,
+    },
+
+    /// Save TypeScript definitions of Bitburner functions
+    GetDefinitions {
+        #[arg(short, long, default_value_t = 7953)]
+        /// TCP port used for the Bitburner connection
+        port: u16,
+
+        #[arg(short, long, default_value = "bitburner_definitions.ts")]
+        /// Output file for the definitions
+        output: PathBuf,
     },
 }
 

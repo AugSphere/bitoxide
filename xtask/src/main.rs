@@ -11,6 +11,7 @@ fn main() -> ExitCode {
     match cli.command {
         cli::Commands::Codegen { profile } => codegen(profile),
         cli::Commands::Serve { port } => server::launch_server(port, &js_output_path()),
+        cli::Commands::GetDefinitions { port, output } => server::get_definitions(port, output),
     }
 }
 
