@@ -1,3 +1,5 @@
+use futures::future::FusedFuture;
+use futures::{pin_mut, select_biased};
 use log;
 use std::fs;
 use std::path::PathBuf;
@@ -6,8 +8,8 @@ use std::{fs::create_dir_all, net::SocketAddr, path::Path, process::ExitCode};
 use async_std::net::TcpStream;
 use async_tungstenite::{tungstenite::Message, WebSocketStream};
 use futures::{
-    channel::mpsc::channel, channel::mpsc::Receiver, executor::LocalPool, select,
-    stream::StreamExt, task::LocalSpawnExt, FutureExt, SinkExt,
+    channel::mpsc::channel, channel::mpsc::Receiver, executor::LocalPool, stream::StreamExt,
+    task::LocalSpawnExt, FutureExt, SinkExt,
 };
 
 mod file_watcher;
@@ -21,7 +23,7 @@ mod rpc_types;
 use self::rpc_types::{RpcRequest, RpcResponse};
 
 pub fn launch_server(port: u16, watch_path: &Path) -> ExitCode {
-    let mut quit_rx = set_ctrl_handler();
+    let quit_rx = set_ctrl_handler();
 
     if !watch_path.exists() {
         log::info!("Directory {watch_path:?} does not exist, creating it");
@@ -33,36 +35,34 @@ pub fn launch_server(port: u16, watch_path: &Path) -> ExitCode {
 
     let address = ([127, 0, 0, 1], port).into();
     let serve = async move {
-        let Some(mut websocket) = connect(address, &mut quit_rx).await else {
-            return;
-        };
-        stream_watched(&mut websocket, watch_event_rx, &mut quit_rx).await;
-    };
+        let websocket = connect(address).await;
+        stream_watched(websocket, watch_event_rx).await;
+    }
+    .fuse();
 
     let mut pool = LocalPool::new();
     pool.spawner()
-        .spawn_local(serve)
+        .spawn_local(with_quit(quit_rx, serve).map(|_| ()))
         .expect("Failed to set up file watcher task");
     pool.run();
     ExitCode::SUCCESS
 }
 
 pub fn get_definitions(port: u16, path: PathBuf) -> ExitCode {
-    let mut quit_rx = set_ctrl_handler();
+    let quit_rx = set_ctrl_handler();
 
     let address = ([127, 0, 0, 1], port).into();
     let send_request = async move {
-        let Some(mut websocket) = connect(address, &mut quit_rx).await else {
-            return;
-        };
-        let definitions = request_definitions(&mut websocket).await;
+        let websocket = connect(address).await;
+        let definitions = request_definitions(websocket).await;
         fs::write(&path, definitions).expect("Failed writing definitions to file");
         log::info!("Definitions written to {path:?}");
-    };
+    }
+    .fuse();
 
     let mut pool = LocalPool::new();
     pool.spawner()
-        .spawn_local(send_request)
+        .spawn_local(with_quit(quit_rx, send_request).map(|_| ()))
         .expect("Failed to set up definition request task");
     pool.run();
     ExitCode::SUCCESS
@@ -81,29 +81,37 @@ fn set_ctrl_handler() -> futures::channel::mpsc::Receiver<()> {
     quit_rx
 }
 
-async fn connect(
-    address: SocketAddr,
-    quit_rx: &mut Receiver<()>,
-) -> Option<WebSocketStream<TcpStream>> {
+async fn with_quit<F>(mut quit_rx: Receiver<()>, future: F) -> Option<F::Output>
+where
+    F: FusedFuture,
+{
+    pin_mut!(future);
+    select_biased! {
+        _ = quit_rx.next() => None,
+        res = future => Some(res),
+    }
+}
+
+async fn connect(address: SocketAddr) -> WebSocketStream<TcpStream> {
     log::info!("Listening on port {}...", address.port());
     let server = async_std::net::TcpListener::bind(address)
         .await
         .expect("Could not bind to port");
-
-    let stream = select! {
-        res = server.accept().fuse() => res.expect("Failed to establish a connection to Bitburner").0,
-        _ = quit_rx.next() => return None,
-    };
-
+    let stream = server
+        .accept()
+        .await
+        .expect("Failed to establish a connection to Bitburner")
+        .0;
     let websocket = async_tungstenite::accept_async(stream)
         .await
         .expect("Failed to create a websocket");
-    Some(websocket)
+    websocket
 }
 
-async fn request_definitions(websocket: &mut WebSocketStream<TcpStream>) -> String {
+async fn request_definitions(mut websocket: WebSocketStream<TcpStream>) -> String {
     let request = RpcRequest::get_definition_file(1);
-    let message = serde_json::to_string(&request).expect("Failed to prepare getDefinitionFile request");
+    let message =
+        serde_json::to_string(&request).expect("Failed to prepare getDefinitionFile request");
     websocket.send(Message::Text(message)).await.unwrap();
     let message = websocket.next().await.unwrap().unwrap();
     let text = match message {
@@ -117,23 +125,18 @@ async fn request_definitions(websocket: &mut WebSocketStream<TcpStream>) -> Stri
 }
 
 async fn stream_watched(
-    websocket: &mut WebSocketStream<TcpStream>,
+    mut websocket: WebSocketStream<TcpStream>,
     mut watch_event_rx: WatchReceiver,
-    quit_rx: &mut Receiver<()>,
 ) {
     log::info!(
         "Connected, will upload new js script files, run `cargo xtask codegen` to generate them"
     );
     loop {
-        select! {
-            events = watch_event_rx.next() => {
-                let js_paths = js_paths_in(events.expect("Missing events in stream"));
-                let result = send_files(websocket, js_paths).await;
-                if let Err(err) = result {
-                    log::error!("Failed to send files: {err}");
-                }
-            },
-            _ = quit_rx.next() => break,
+        let events = watch_event_rx.next().await;
+        let js_paths = js_paths_in(events.expect("Missing events in stream"));
+        let result = send_files(&mut websocket, js_paths).await;
+        if let Err(err) = result {
+            log::error!("Failed to send files: {err}");
         }
     }
 }
