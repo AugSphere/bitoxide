@@ -1,16 +1,17 @@
-use futures::future::FusedFuture;
-use futures::{pin_mut, select_biased};
 use log;
 use std::fs;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::Ipv4Addr;
 use std::path::PathBuf;
 use std::{fs::create_dir_all, net::SocketAddr, path::Path, process::ExitCode};
 
 use async_std::net::TcpStream;
 use async_tungstenite::{tungstenite::Message, WebSocketStream};
 use futures::{
-    channel::mpsc::channel, channel::mpsc::Receiver, executor::LocalPool, stream::StreamExt,
-    task::LocalSpawnExt, FutureExt, SinkExt,
+    channel::mpsc::{channel, Receiver, Sender},
+    executor::LocalPool,
+    stream::StreamExt,
+    task::LocalSpawnExt,
+    SinkExt,
 };
 
 mod file_watcher;
@@ -24,7 +25,7 @@ mod rpc_types;
 use self::rpc_types::{RpcRequest, RpcResponse};
 
 pub fn launch_server(port: u16, watch_path: &Path) -> ExitCode {
-    let quit_rx = set_ctrl_handler();
+    let (_, mut quit_rx) = set_ctrl_handler();
 
     if !watch_path.exists() {
         log::info!("Directory {watch_path:?} does not exist, creating it");
@@ -34,63 +35,55 @@ pub fn launch_server(port: u16, watch_path: &Path) -> ExitCode {
     log::info!("Setting up file watch on {watch_path:?}...");
     let (_watcher, watch_event_rx) = debouncing_file_watcher(&watch_path);
 
-    let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
+    let address = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), port);
     let serve = async move {
         let websocket = connect(address).await;
         stream_watched(websocket, watch_event_rx).await;
-    }
-    .fuse();
+    };
 
     let mut pool = LocalPool::new();
     pool.spawner()
-        .spawn_local(with_quit(quit_rx, serve).map(|_| ()))
+        .spawn_local(serve)
         .expect("Failed to set up file watcher task");
-    pool.run();
+    pool.run_until(quit_rx.next());
     ExitCode::SUCCESS
 }
 
 pub fn get_definitions(port: u16, path: PathBuf) -> ExitCode {
-    let quit_rx = set_ctrl_handler();
+    let (mut quit_tx, mut quit_rx) = set_ctrl_handler();
 
-    let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
+    let address = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), port);
     let send_request = async move {
         let websocket = connect(address).await;
         let definitions = request_definitions(websocket).await;
         fs::write(&path, definitions).expect("Failed writing definitions to file");
         log::info!("Definitions written to {path:?}");
-    }
-    .fuse();
+        quit_tx
+            .send(())
+            .await
+            .expect("Failed to send shutdown command")
+    };
 
     let mut pool = LocalPool::new();
     pool.spawner()
-        .spawn_local(with_quit(quit_rx, send_request).map(|_| ()))
+        .spawn_local(send_request)
         .expect("Failed to set up definition request task");
-    pool.run();
+    pool.run_until(quit_rx.next());
     ExitCode::SUCCESS
 }
 
-fn set_ctrl_handler() -> futures::channel::mpsc::Receiver<()> {
+fn set_ctrl_handler() -> (Sender<()>, Receiver<()>) {
     log::info!("Running, use Ctrl-C when you want to quit");
-    let (mut quit_tx, quit_rx) = channel::<()>(1);
+    let (quit_tx, quit_rx) = channel::<()>(1);
+    let mut ctrlc_tx = quit_tx.clone();
     ctrlc::set_handler(move || {
         println!("");
-        quit_tx
+        ctrlc_tx
             .try_send(())
             .expect("Failed to send shutdown command")
     })
     .expect("Error setting Ctrl-C handler");
-    quit_rx
-}
-
-async fn with_quit<F>(mut quit_rx: Receiver<()>, future: F) -> Option<F::Output>
-where
-    F: FusedFuture,
-{
-    pin_mut!(future);
-    select_biased! {
-        _ = quit_rx.next() => None,
-        res = future => Some(res),
-    }
+    (quit_tx, quit_rx)
 }
 
 async fn connect(address: SocketAddr) -> WebSocketStream<TcpStream> {
