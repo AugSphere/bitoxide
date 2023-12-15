@@ -9,7 +9,6 @@ use futures::{
     channel::mpsc::channel, channel::mpsc::Receiver, executor::LocalPool, select,
     stream::StreamExt, task::LocalSpawnExt, FutureExt, SinkExt,
 };
-use serde::{Deserialize, Serialize};
 
 mod file_watcher;
 use file_watcher::debouncing_file_watcher;
@@ -18,29 +17,8 @@ use file_watcher::{js_paths_in, WatchReceiver};
 mod send_files;
 use send_files::send_files;
 
-#[derive(Serialize)]
-struct RpcRequest<T> {
-    jsonrpc: String,
-    id: u64,
-    method: String,
-    params: T,
-}
-
-#[derive(Serialize)]
-struct PushFileParams {
-    filename: String,
-    content: String,
-    server: String,
-}
-
-#[derive(Deserialize)]
-#[allow(dead_code)]
-struct RpcResponse<T> {
-    jsonrpc: String,
-    id: u64,
-    result: T,
-    error: Option<String>,
-}
+mod rpc_types;
+use self::rpc_types::{RpcRequest, RpcResponse};
 
 pub fn launch_server(port: u16, watch_path: &Path) -> ExitCode {
     let mut quit_rx = set_ctrl_handler();
@@ -124,12 +102,7 @@ async fn connect(
 }
 
 async fn request_definitions(websocket: &mut WebSocketStream<TcpStream>) -> String {
-    let request = RpcRequest::<Option<String>> {
-        jsonrpc: "2.0".to_owned(),
-        id: 1,
-        method: "getDefinitionFile".to_owned(),
-        params: None,
-    };
+    let request = RpcRequest::get_definition_file(1);
     let message = serde_json::to_string(&request).expect("Failed to prepare getDefinitionFile request");
     websocket.send(Message::Text(message)).await.unwrap();
     let message = websocket.next().await.unwrap().unwrap();

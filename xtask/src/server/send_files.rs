@@ -12,7 +12,7 @@ use async_tungstenite::{
 };
 use futures::{stream::StreamExt, SinkExt};
 
-use super::{PushFileParams, RpcRequest, RpcResponse};
+use super::{RpcRequest, RpcResponse};
 
 type DynError = Box<dyn std::error::Error>;
 
@@ -41,7 +41,7 @@ async fn send_single_file(
         .ok_or("Not a file")?
         .to_str()
         .expect("Invalid filename");
-    let reply = post_to_websocket(websocket, filename, &contents).await?;
+    let reply = post_to_websocket(websocket, filename, contents).await?;
     let Message::Text(json) = reply else {
         return Err("Unexpected response type from Bitburner".into());
     };
@@ -54,18 +54,9 @@ async fn send_single_file(
 async fn post_to_websocket(
     websocket: &mut WebSocketStream<TcpStream>,
     filename: &str,
-    contents: &str,
+    contents: String,
 ) -> Result<Message, tungstenite::Error> {
-    let request = RpcRequest::<PushFileParams> {
-        jsonrpc: "2.0".to_owned(),
-        id: 1,
-        method: "pushFile".to_owned(),
-        params: PushFileParams {
-            filename: filename.to_owned(),
-            content: contents.to_owned(),
-            server: "home".to_owned(),
-        },
-    };
+    let request = RpcRequest::push_file(1, "home", filename, contents);
     let message = serde_json::to_string(&request).expect("Failed to prepare pushFile request");
     websocket.send(Message::Text(message)).await?;
     let response = websocket.next().await.unwrap();
