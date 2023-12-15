@@ -2,6 +2,7 @@ use futures::future::FusedFuture;
 use futures::{pin_mut, select_biased};
 use log;
 use std::fs;
+use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 use std::{fs::create_dir_all, net::SocketAddr, path::Path, process::ExitCode};
 
@@ -33,7 +34,7 @@ pub fn launch_server(port: u16, watch_path: &Path) -> ExitCode {
     log::info!("Setting up file watch on {watch_path:?}...");
     let (_watcher, watch_event_rx) = debouncing_file_watcher(&watch_path);
 
-    let address = ([127, 0, 0, 1], port).into();
+    let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
     let serve = async move {
         let websocket = connect(address).await;
         stream_watched(websocket, watch_event_rx).await;
@@ -51,7 +52,7 @@ pub fn launch_server(port: u16, watch_path: &Path) -> ExitCode {
 pub fn get_definitions(port: u16, path: PathBuf) -> ExitCode {
     let quit_rx = set_ctrl_handler();
 
-    let address = ([127, 0, 0, 1], port).into();
+    let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
     let send_request = async move {
         let websocket = connect(address).await;
         let definitions = request_definitions(websocket).await;
