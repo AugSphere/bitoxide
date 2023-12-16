@@ -1,13 +1,12 @@
-use bitburner_api::js_sys;
+use bitburner_api::parse_args;
 use bitburner_api::wasm_bindgen;
+use bitburner_api::Args;
 
 #[wasm_bindgen]
 pub fn main_rs(ns: &bitburner_api::NS) {
-    let mut buffer = "Hello, world! I said".to_owned();
-    let args = bitburner_api::get_attribute(ns, "args", |a| Some(js_sys::Array::from(a)))
-        .unwrap()
-        .unwrap();
-    let args_iter = args.iter().map(|a| a.as_string().unwrap());
-    buffer += &(" ".to_owned() + &args_iter.collect::<Vec<String>>().join(" "));
+    let args: Vec<Args> = parse_args(ns.args()).unwrap();
+
+    let mut buffer = String::new();
+    buffer += &format!("Hello, world! I said {:?}", args);
     ns.tprint(&buffer);
 }
