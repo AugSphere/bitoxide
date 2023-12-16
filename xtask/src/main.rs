@@ -17,14 +17,14 @@ fn main() -> ExitCode {
 
 fn codegen(profile: cli::Profile) -> ExitCode {
     let status = compile_wasm::compile_wasm_packages(profile);
-    let wasm_paths = get_wasm_artifact_paths(profile);
-    bindgen::generate_js_bindings(profile, wasm_paths, &js_output_path());
-    let code = status.code();
-    match code {
+    let code = match status.code() {
         Some(code) => match u8::try_from(code) {
             Ok(code) => ExitCode::from(code),
-            _ => ExitCode::FAILURE,
+            _ => return ExitCode::FAILURE,
         },
-        _ => ExitCode::FAILURE,
-    }
+        _ => return ExitCode::FAILURE,
+    };
+    let wasm_paths = get_wasm_artifact_paths(profile);
+    bindgen::generate_js_bindings(profile, wasm_paths, &js_output_path());
+    code
 }
