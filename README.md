@@ -1,6 +1,8 @@
 # Template Rust WASM Bitburner Library
 
-This repository serves as a template and a starting point for Bitburner players to use Rust in Bitburner instead of JavaScript by compiling Rust into WebAssembly and then imported into Bitburner's JavaScript.
+This repository serves as a template and a starting point for Bitburner players
+to use Rust in Bitburner instead of JavaScript by compiling Rust into
+WebAssembly and then imported into Bitburner's JavaScript.
 
 ## Prerequisites
 
@@ -8,52 +10,64 @@ This repository serves as a template and a starting point for Bitburner players 
 
 Install [Rust](https://rustup.rs/) on your computer. This will allow you to compile the code.
 
-#### WebAssembly and `cargo-post`
+#### WebAssembly
 
 Open your terminal and run these commands:
 
 ```bash
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli
-cargo install --git https://github.com/phil-opp/cargo-post.git
 ```
 
-<!---For now, install `cargo-post` from git because of my [commit](https://github.com/phil-opp/cargo-post/commit/a7a2b65ffd90ae2728d277bc954416cc4e37fae9) that hasn't been published into a version. Once this commit is published into cargo, we revert this.--->
+These commands will allow you to compile to WebAssembly.
 
-These commands will allow you to compile to WebAssembly and do post-build processes. Both will be used.
+## How to use
 
-## Building
-
-To build the program, run the following command:
-
+All the tasks are managed through
 ```bash
-cargo post build --release --target wasm32-unknown-unknown
+cargo xtask
 ```
 
-The build should be listening for a WebSocket connection at port 7953. Open your Bitburner, go to Options, go to Remote API, then set the port number to 7953 then press Connect. This will upload the JavaScript file to Bitburner.
-
-After that, run your script in Bitburner.
-
-```
-run bitoxide.js
-```
-
-### Copy from `stdout` instead
-
-If opening the Websocket Remote API every build is too much steps for you, one can consider to copy directly from `stdout` and paste the code into the Bitburner editor. This can be shortened by the use of tools like `xclip` or Windows' `clip` by piping the output of the build command into `xclip` or `clip`.
-
-Use this environment variable to enable writing to `stdout`:
-
+To create a JS file and put it in the game first create a new child package with
 ```bash
-OUTPUT_MODE=stdout
+cargo new --lib <SCRIPT_NAME>
+```
+and adjust the contents of Cargo.toml to depend on the bitburner api package
+and change library type to cdylib:
+```toml
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bitburner_api = {path = "../bitburner_api"}
 ```
 
-### Enable debug symbols
-
-To enable debug symbols and add tracing into panics, use the environment variable below:
-
+The rust bindings for the API are not complete, to add new functions refer to
+the definition file that can be obtained from the game by executing
 ```bash
-DEBUG=true
+cargo xtask get-definitions
 ```
 
-Note that this can increase the output size by over ten times the original size.
+Include your new package in the workspace at the top level Cargo.toml
+```toml
+[workspace]
+members = [
+    "bitburner_api",
+    "xtask",
+    "hello",
+    "<SCRIPT_NAME>",
+]
+```
+
+Now you can compile your code to WASM and generate JS bindings with
+```bash
+cargo xtask codegen
+```
+
+To help load them into the game there is a server you can launch with
+```bash
+cargo xtask serve
+```
+Connect the game to it from Options -> Remote API. The server will monitor js
+output directory and upload fresh files to the game automatically whenever
+codegen succeeds.
