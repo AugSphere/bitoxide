@@ -31,7 +31,7 @@ pub enum Commands {
         /// TCP port used for the Bitburner connection
         port: u16,
 
-        #[arg(short, long, default_value = "bitburner_definitions.ts")]
+        #[arg(short, long, default_value = "bitburner.d.ts")]
         /// Output file for the definitions
         output: PathBuf,
     },
