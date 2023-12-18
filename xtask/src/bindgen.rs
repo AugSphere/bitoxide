@@ -2,27 +2,36 @@ use std::{
     fs::OpenOptions,
     io::{BufRead as _, BufReader, Read as _, Result as IoResult, Seek, Write},
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, ExitStatus},
 };
 
 use base64::write::EncoderWriter;
 
 use crate::Profile;
 
-pub fn generate_js_bindings(profile: Profile, wasm_paths: Vec<PathBuf>, output_path: &Path) {
+pub fn generate_js_bindings(
+    profile: Profile,
+    wasm_paths: Vec<PathBuf>,
+    output_path: &Path,
+) -> Result<(), ExitStatus> {
     for path in wasm_paths {
-        wasm_to_js(&path, output_path, profile == Profile::Dev);
+        wasm_to_js(&path, output_path, profile == Profile::Dev)?;
     }
+    Ok(())
 }
 
-fn wasm_to_js(wasm_path: &Path, output_path: &Path, debug: bool) {
+fn wasm_to_js(wasm_path: &Path, output_path: &Path, debug: bool) -> Result<(), ExitStatus> {
     println!(
         "Generating js {} debug from {wasm_path:?}",
         if debug { "with" } else { "without" }
     );
     let crate_name = wasm_path.file_stem().unwrap().to_str().unwrap().to_owned();
-    let wasm_b64 = encode_wasm_js_decl(&*wasm_path, &*output_path, &*crate_name, debug);
+    let wasm_b64 = match encode_wasm_js_decl(&*wasm_path, &*output_path, &*crate_name, debug) {
+        Ok(wasm_b64) => wasm_b64,
+        Err(status) => return Err(status),
+    };
     join_with_binder(wasm_b64, output_path, &crate_name);
+    Ok(())
 }
 
 /// Creates the WASM file, encodes it into base64, and creates a JavaScript
@@ -32,7 +41,7 @@ fn encode_wasm_js_decl(
     wasm_output: &Path,
     crate_name: &str,
     debug: bool,
-) -> String {
+) -> Result<String, ExitStatus> {
     struct Writable {
         contents: Vec<u8>,
         line_len: usize,
@@ -101,13 +110,17 @@ fn encode_wasm_js_decl(
         command.arg("--keep-debug");
     }
 
-    command.output().expect("Cannot run wasm-bindgen");
+    let status = command.status().expect("Cannot run wasm-bindgen");
+    if !status.success() {
+        return Err(status);
+    }
 
+    let wasm_file_path = wasm_output.join(format!("{}_bg.wasm", crate_name));
     let wasm_file = OpenOptions::new()
         .read(true)
-        .open(wasm_output.join(format!("{}_bg.wasm", crate_name)))
+        .open(wasm_file_path)
         .map(|file| BufReader::new(file))
-        .expect("Cannot read the wasm file.");
+        .expect("Cannot read the wasm file");
 
     // encode
     let mut writable = Writable::new();
@@ -122,7 +135,7 @@ fn encode_wasm_js_decl(
         encoder.finish().unwrap();
     }
 
-    writable.finish()
+    Ok(writable.finish())
 }
 
 fn join_with_binder(mut js_str: String, wasm_output: &Path, crate_name: &str) {
@@ -139,7 +152,7 @@ fn join_with_binder(mut js_str: String, wasm_output: &Path, crate_name: &str) {
         buffer.clear();
         match reader
             .read_line(&mut buffer)
-            .expect("Cannot read the js file.")
+            .expect("Cannot read the js file")
         {
             0 => break,
             _ => {}

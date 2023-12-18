@@ -7,6 +7,7 @@ use std::{
     env,
     ffi::OsString,
     path::{Path, PathBuf},
+    process::{ExitCode, ExitStatus},
 };
 
 use cli::Profile;
@@ -47,4 +48,14 @@ pub fn get_wasm_artifact_paths(profile: Profile) -> Vec<PathBuf> {
         }
     }
     wasm_paths
+}
+
+pub fn exit_code_from_status(status: ExitStatus) -> ExitCode {
+    match status.code() {
+        Some(code) => match u8::try_from(code) {
+            Ok(code) => ExitCode::from(code),
+            _ => return ExitCode::FAILURE,
+        },
+        _ => return ExitCode::FAILURE,
+    }
 }

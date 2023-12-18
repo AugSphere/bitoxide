@@ -1,6 +1,9 @@
 use clap::Parser;
 use std::process::ExitCode;
-use xtask::{bindgen, cli, compile_wasm, get_wasm_artifact_paths, js_output_path, server};
+use xtask::{
+    bindgen, cli, compile_wasm, exit_code_from_status, get_wasm_artifact_paths, js_output_path,
+    server,
+};
 
 fn main() -> ExitCode {
     env_logger::builder()
@@ -17,14 +20,12 @@ fn main() -> ExitCode {
 
 fn codegen(profile: cli::Profile) -> ExitCode {
     let status = compile_wasm::compile_wasm_packages(profile);
-    let code = match status.code() {
-        Some(code) => match u8::try_from(code) {
-            Ok(code) => ExitCode::from(code),
-            _ => return ExitCode::FAILURE,
-        },
-        _ => return ExitCode::FAILURE,
-    };
+    if !status.success() {
+        return exit_code_from_status(status);
+    }
     let wasm_paths = get_wasm_artifact_paths(profile);
-    bindgen::generate_js_bindings(profile, wasm_paths, &js_output_path());
-    code
+    match bindgen::generate_js_bindings(profile, wasm_paths, &js_output_path()) {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(status) => exit_code_from_status(status),
+    }
 }
