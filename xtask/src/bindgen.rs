@@ -101,6 +101,7 @@ fn encode_wasm_js_decl(
         .arg("--target")
         .arg("web")
         .arg("--no-typescript")
+        .arg("--reference-types")
         .arg(&wasm_path)
         .arg("--out-dir")
         .arg(&wasm_output);
