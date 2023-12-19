@@ -1,36 +1,37 @@
-//! Bindings for the [Netscript interface](NS)
-#![deny(rustdoc::all)]
-use wasm_bindgen::{prelude::*, JsValue};
+//! Bindings for the [Netscript interface](NS).
 
-#[wasm_bindgen]
-extern "C" {
-    /// Collection of all functions passed to scripts.
-    ///
-    /// # Basic usage example
-    /// ```rust
-    /// #[wasm_bindgen]
-    /// pub async fn main_rs(ns: &bitburner_api::NS) {
-    ///     // Basic ns functions can be accessed on the ns object
-    ///     ns.getHostname();
-    ///     // Some related functions are gathered under a sub-property of the ns object
-    ///     ns.stock.getPrice();
-    ///     // Most functions that return a promise need to be awaited.
-    ///     ns.hack('n00dles').await;
-    /// }
-    /// ```
-    pub type NS;
+mod shims;
 
+/// Collection of all functions passed to scripts.
+///
+/// # Basic usage example
+/// ```rust
+/// #[wasm_bindgen]
+/// pub async fn main_rs(ns: &bitburner_api::NS) {
+///     // Basic ns functions can be accessed on the ns object
+///     ns.get_hostname();
+///     // Some related functions are gathered under a sub-property of the ns object
+///     ns.stock.get_price();
+///     // Most functions that return a promise need to be awaited.
+///     ns.hack('n00dles').await;
+/// }
+/// ```
+pub use shims::NS;
+pub use shims::{Arg, BasicHGWOptions};
+
+impl NS {
     /// Arguments passed into the script.
     ///
-    /// Returns a [`Vec`] of [`JsValue`]s that can be parsed to [`Arg`]s with [`parse_args`].
+    /// # Panics
+    /// Will panic if JS side returns an unexpected type.
     ///
     /// # Examples
     /// ```rust
     /// // hello.rs
     /// #[wasm_bindgen]
     /// pub fn main_rs(ns: &NS) {
-    ///     let args: Vec<Arg> = parse_args(ns.args()).unwrap();
-    ///     ns.tprint(&format!("Hello, world! I said {:?}", args));
+    ///    let args: Vec<Arg> = ns.args();
+    ///    ns.tprint(&format!("Hello, world! I said {args:?}"));
     /// }
     /// ```
     /// ```text
@@ -38,12 +39,14 @@ extern "C" {
     /// Running script with 1 thread(s), pid 17 and args: [7,"text",true].
     /// hello.js: Hello, world! I said [F64(7.0), String("text"), Bool(true)]
     /// ```
-    #[wasm_bindgen(method, getter)]
-    pub fn args(this: &NS) -> Vec<JsValue>;
+    pub fn args(self: &NS) -> Vec<Arg> {
+        shims::parse_args(self.args_shim()).unwrap()
+    }
 
     /// The current script's PID.
-    #[wasm_bindgen(method, getter)]
-    pub fn pid(this: &NS) -> f64;
+    pub fn pid(self: &NS) -> f64 {
+        self.pid_shim()
+    }
 
     /// Steal a server's money.
     ///
@@ -54,7 +57,7 @@ extern "C" {
     /// security level when this function is called. In order to hack a server you must first gain root access to that server
     /// and also have the required hacking level.
     ///
-    /// Returns a promise that resolves to the amount of money stolen ([`f64`]) (which is zero if the hack is unsuccessful).
+    /// Returns a promise that resolves to the amount of money stolen (which is zero if the hack is unsuccessful).
     ///
     /// A script can hack a server from anywhere. It does not need to be running on the same
     /// server to hack that server. For example, you can create a script that hacks the `foodnstuff`
@@ -62,12 +65,23 @@ extern "C" {
     ///
     /// A successful `hack()` on a server will raise that server’s security level by 0.002.
     ///
+    /// # Panics
+    /// Will panic if JS Promise resolves to something other than [`f64`].
+    ///
+    /// Invalid [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
+    /// requested than are available. **Bitburner is seemingly not able to
+    /// kill the script in this case, or catch the exception**.
+    /// For this reason you should validate the arguments before
+    /// calling [`NS::hack`], [`NS::grow`], or [`NS::weaken`].
+    ///
     /// # Examples
     /// ```rust
     /// #[wasm_bindgen]
     /// pub async fn main_rs(ns: &NS) {
-    ///     let amount = ns.hack("foodnstuff".to_owned(), None).await;
-    ///     ns.print(&format!("Got {:?}", amount.unchecked_into_f64()));
+    ///     unsafe {
+    ///         let amount = ns.hack("foodnstuff", None).await;
+    ///         ns.print(&format!("Got {amount}"));
+    ///     }
     /// }
     /// ```
     /// ```text
@@ -76,12 +90,9 @@ extern "C" {
     /// Got 0.0
     /// Script finished running
     /// ```
-    #[wasm_bindgen(catch, method)]
-    pub async fn hack(
-        this: &NS,
-        host: String,
-        opts: Option<BasicHGWOptions>,
-    ) -> Result<JsValue, JsValue>;
+    pub async unsafe fn hack(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
+        self.hack_shim(host, opts).await.unchecked_into_f64()
+    }
 
     /// Reduce a server's security level.
     ///
@@ -91,23 +102,23 @@ extern "C" {
     /// The runtime for this function depends on your hacking level and the target server’s security
     /// level when this function is called. This function lowers the security level of the target server by 0.05.
     ///
-    /// Returns a promise that resolves to the value by which security was reduced ([`f64`]).
+    /// Returns a promise that resolves to the value by which security was reduced.
     ///
     /// Like [`NS::hack`] and [`NS::grow`], [`NS::weaken`] can be called on any server, regardless of
     /// where the script is running. This function requires root access to the target server, but
     /// there is no required hacking level to run the function.
     ///
-    /// # Examples
-    /// ```rust
-    /// let current_security = ns.getServerSecurityLevel("foodnstuff");
-    /// current_security -= ns.weaken("foodnstuff").await;
-    /// ```
-    #[wasm_bindgen(catch, method)]
-    pub async fn weaken(
-        this: &NS,
-        host: String,
-        opts: Option<BasicHGWOptions>,
-    ) -> Result<JsValue, JsValue>;
+    /// # Panics
+    /// Will panic if JS Promise resolves to something other than [`f64`].
+    ///
+    /// Invalid [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
+    /// requested than are available. **Bitburner is seemingly not able to
+    /// kill the script in this case, or catch the exception**.
+    /// For this reason you should validate the arguments before
+    /// calling [`NS::hack`], [`NS::grow`], or [`NS::weaken`].
+    pub async unsafe fn weaken(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
+        self.weaken_shim(host, opts).await.unchecked_into_f64()
+    }
 
     /// Spoof money in a server's bank account, increasing the amount available.
     ///
@@ -141,19 +152,23 @@ extern "C" {
     /// level to run the command. It also raises the security level of the target server based on the number of threads.
     /// The security increase can be determined using [`NS::growthAnalyzeSecurity`].
     ///
-    /// # Examples
-    /// ```rust
-    /// let current_money = ns.getServerMoneyAvailable("n00dles");
-    /// currentMoney *= ns.grow("foodnstuff").await;
-    /// ```
-    #[wasm_bindgen(catch, method)]
-    pub async fn grow(
-        this: &NS,
-        host: String,
-        opts: Option<BasicHGWOptions>,
-    ) -> Result<JsValue, JsValue>;
+    /// # Panics
+    /// Will panic if JS Promise resolves to something other than [`f64`].
+    ///
+    /// Invalid [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
+    /// requested than are available. **Bitburner is seemingly not able to
+    /// kill the script in this case, or catch the exception**.
+    /// For this reason you should validate the arguments before
+    /// calling [`NS::hack`], [`NS::grow`], or [`NS::weaken`].
+    pub async unsafe fn grow(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
+        self.grow_shim(host, opts).await.unchecked_into_f64()
+    }
 
     /// Suspends the script for `millis` milliseconds.
+    ///
+    /// # Panics
+    /// Will panic if the underlying JS function does not return a Promise that resolves to `true`.
+    ///
     /// # Examples
     /// ```rust
     /// // This will count from 1 to 10 in your terminal, with one number every 5 seconds
@@ -162,8 +177,12 @@ extern "C" {
     ///     ns.sleep(5000.0).await;
     /// }
     /// ```
-    #[wasm_bindgen(method)]
-    pub async fn sleep(this: &NS, millis: f64);
+    pub async fn sleep(self: &NS, millis: f64) {
+        let Some(ret) = self.sleep_shim(millis).await.as_bool() else {
+            panic!("JS ns.sleep Promise did not resolve to a bool");
+        };
+        assert!(ret, "JS ns.sleep Promise did not resolve to `true`")
+    }
 
     /// Prints one or more values or variables to the script’s logs.
     ///
@@ -205,21 +224,24 @@ extern "C" {
     /// ns.print(&format!("{green}Well done!{reset}"));
     /// ns.print(&format!("{cyan}ERROR Should this be in red?{reset}"));
     /// ```
-    #[wasm_bindgen(method)]
-    pub fn print(this: &NS, print: &str);
+    pub fn print(self: &NS, to_print: &str) {
+        self.print_shim(to_print)
+    }
 
     /// Prints a string to the Terminal.
     ///
     /// See [`NS::print`] for how to add color to your printed strings.
-    #[wasm_bindgen(method)]
-    pub fn tprint(this: &NS, print: &str);
+    pub fn tprint(self: &NS, to_print: &str) {
+        self.tprint_shim(to_print)
+    }
 
     /// Get the list of servers connected to a server.
     ///
     /// **RAM cost: 0.2 GB**
     ///
     /// Returns a [`Vec`] containing the hostnames of all servers that are one
-    /// node way from the specified target server.
+    /// node way from the specified target server. If specified host does not exist, returns
+    /// [`None`].
     ///
     /// # Examples
     /// ```rust
@@ -237,79 +259,7 @@ extern "C" {
     ///     ns.tprint(&neighbor);
     /// }
     /// ```
-    /// # Errors
-    /// Returns the JS exception as a [`JsValue`] on being called for a non-existent host.
-    ///
-    /// # Arguments
-    /// * host - Optional. Hostname of the server to scan, default to current server.
-    #[wasm_bindgen(catch, method)]
-    pub fn scan(this: &NS, host: Option<&str>) -> Result<Vec<String>, JsValue>;
-
-    #[wasm_bindgen(catch, method)]
-    pub fn nuke(this: &NS, host: &str) -> Result<(), JsValue>;
-
-    #[wasm_bindgen(catch, method)]
-    pub fn brutessh(this: &NS, hostname: &str) -> Result<(), JsValue>;
-
-    #[wasm_bindgen(catch, method)]
-    pub fn ftpcrack(this: &NS, hostname: &str) -> Result<(), JsValue>;
-
-    #[wasm_bindgen(catch, method)]
-    pub fn relaysmtp(this: &NS, hostname: &str) -> Result<(), JsValue>;
-
-    #[wasm_bindgen(catch, method)]
-    pub fn httpworm(this: &NS, hostname: &str) -> Result<(), JsValue>;
-
-    #[wasm_bindgen(catch, method)]
-    pub fn sqlinject(this: &NS, hostname: &str) -> Result<(), JsValue>;
-
-    #[wasm_bindgen(method)]
-    pub fn getServer(this: &NS, host: Option<&str>) -> Server;
-
-    pub type Server;
-}
-
-/// Options to affect the behavior of [`NS::hack`], [`NS::grow`], and [`NS::weaken`].
-#[allow(non_snake_case)]
-#[derive(Debug, Default)]
-#[wasm_bindgen]
-pub struct BasicHGWOptions {
-    /// Number of threads to use for this function.
-    /// Must be less than or equal to the number of threads the script is running with.
-    pub threads: Option<u8>,
-    /// Set to true this action will affect the stock market.
-    pub stock: Option<bool>,
-    /// Number of additional milliseconds that will be spent waiting between the start of the function and when it
-    /// completes.
-    pub additionalMsec: Option<f64>,
-}
-
-/// An argument passed into a script. For use with [`NS::args`].
-#[derive(Debug, PartialEq)]
-pub enum Arg {
-    Bool(bool),
-    F64(f64),
-    String(String),
-}
-
-/// A helper to make the output of [`NS::args`] typed.
-/// # Errors
-/// If passed [`JsValue`]s that are not of the correct type, will return an error message that contains a
-/// [`Debug`](trait@core::fmt::Debug) representation of the first value that fails to parse.
-pub fn parse_args(object: Vec<JsValue>) -> Result<Vec<Arg>, String> {
-    object
-        .into_iter()
-        .map(|val| {
-            if let Some(bool) = val.as_bool() {
-                return Ok(Arg::Bool(bool));
-            };
-            if let Some(float) = val.as_f64() {
-                return Ok(Arg::F64(float));
-            };
-            if let Some(string) = val.as_string() {
-                return Ok(Arg::String(string));
-            };
-            Err(format!("Unexpected argument type of value: {:?}", val))
-        })
-        .collect()
+    pub fn scan(self: &NS, host: Option<&str>) -> Option<Vec<String>> {
+        self.scan_shim(host).ok()
+    }
 }
