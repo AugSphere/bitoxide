@@ -94,32 +94,6 @@ impl NS {
         self.hack_shim(host, opts).await.unchecked_into_f64()
     }
 
-    /// Reduce a server's security level.
-    ///
-    /// **RAM cost: 0.15 GB**
-    ///
-    /// Use your hacking skills to attack a server’s security, lowering the server’s security level.
-    /// The runtime for this function depends on your hacking level and the target server’s security
-    /// level when this function is called. This function lowers the security level of the target server by 0.05.
-    ///
-    /// Returns a promise that resolves to the value by which security was reduced.
-    ///
-    /// Like [`NS::hack`] and [`NS::grow`], [`NS::weaken`] can be called on any server, regardless of
-    /// where the script is running. This function requires root access to the target server, but
-    /// there is no required hacking level to run the function.
-    ///
-    /// # Panics
-    /// Will panic if JS Promise resolves to something other than [`f64`].
-    ///
-    /// Invalid [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
-    /// requested than are available. **Bitburner is seemingly not able to
-    /// kill the script in this case, or catch the exception**.
-    /// For this reason you should validate the arguments before
-    /// calling [`NS::hack`], [`NS::grow`], or [`NS::weaken`].
-    pub async unsafe fn weaken(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
-        self.weaken_shim(host, opts).await.unchecked_into_f64()
-    }
-
     /// Spoof money in a server's bank account, increasing the amount available.
     ///
     /// **RAM cost: 0.15 GB**
@@ -162,6 +136,32 @@ impl NS {
     /// calling [`NS::hack`], [`NS::grow`], or [`NS::weaken`].
     pub async unsafe fn grow(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
         self.grow_shim(host, opts).await.unchecked_into_f64()
+    }
+
+    /// Reduce a server's security level.
+    ///
+    /// **RAM cost: 0.15 GB**
+    ///
+    /// Use your hacking skills to attack a server’s security, lowering the server’s security level.
+    /// The runtime for this function depends on your hacking level and the target server’s security
+    /// level when this function is called. This function lowers the security level of the target server by 0.05.
+    ///
+    /// Returns a promise that resolves to the value by which security was reduced.
+    ///
+    /// Like [`NS::hack`] and [`NS::grow`], [`NS::weaken`] can be called on any server, regardless of
+    /// where the script is running. This function requires root access to the target server, but
+    /// there is no required hacking level to run the function.
+    ///
+    /// # Panics
+    /// Will panic if JS Promise resolves to something other than [`f64`].
+    ///
+    /// Invalid [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
+    /// requested than are available. **Bitburner is seemingly not able to
+    /// kill the script in this case, or catch the exception**.
+    /// For this reason you should validate the arguments before
+    /// calling [`NS::hack`], [`NS::grow`], or [`NS::weaken`].
+    pub async unsafe fn weaken(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
+        self.weaken_shim(host, opts).await.unchecked_into_f64()
     }
 
     /// Suspends the script for `millis` milliseconds.

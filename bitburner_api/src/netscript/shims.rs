@@ -36,15 +36,15 @@ extern "C" {
     #[wasm_bindgen(method, js_name = hack)]
     pub(super) async fn hack_shim(this: &NS, host: &str, opts: Option<BasicHGWOptions>) -> JsValue;
 
+    #[wasm_bindgen(method, js_name = grow)]
+    pub(super) async fn grow_shim(this: &NS, host: &str, opts: Option<BasicHGWOptions>) -> JsValue;
+
     #[wasm_bindgen(method, js_name = weaken)]
     pub(super) async fn weaken_shim(
         this: &NS,
         host: &str,
         opts: Option<BasicHGWOptions>,
     ) -> JsValue;
-
-    #[wasm_bindgen(method, js_name = grow)]
-    pub(super) async fn grow_shim(this: &NS, host: &str, opts: Option<BasicHGWOptions>) -> JsValue;
 
     #[wasm_bindgen(method, js_name = sleep)]
     pub(super) async fn sleep_shim(this: &NS, millis: f64) -> JsValue;
