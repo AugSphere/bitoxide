@@ -1,22 +1,21 @@
-use log;
 use std::fs;
-use std::net::Ipv4Addr;
-use std::path::PathBuf;
-use std::{fs::create_dir_all, net::SocketAddr, path::Path, process::ExitCode};
+use std::fs::create_dir_all;
+use std::net::{Ipv4Addr, SocketAddr};
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 
 use async_std::net::TcpStream;
-use async_tungstenite::{tungstenite::Message, WebSocketStream};
-use futures::{
-    channel::mpsc::{channel, Receiver, Sender},
-    executor::LocalPool,
-    stream::StreamExt,
-    task::LocalSpawnExt,
-    SinkExt,
-};
+use async_tungstenite::tungstenite::Message;
+use async_tungstenite::WebSocketStream;
+use futures::channel::mpsc::{channel, Receiver, Sender};
+use futures::executor::LocalPool;
+use futures::stream::StreamExt;
+use futures::task::LocalSpawnExt;
+use futures::SinkExt;
+use log;
 
 mod file_watcher;
-use file_watcher::debouncing_file_watcher;
-use file_watcher::{js_paths_in, WatchReceiver};
+use file_watcher::{debouncing_file_watcher, js_paths_in, WatchReceiver};
 
 mod send_files;
 use send_files::send_files;

@@ -3,12 +3,10 @@ pub mod cli;
 pub mod compile_wasm;
 pub mod server;
 
-use std::{
-    env,
-    ffi::OsString,
-    path::{Path, PathBuf},
-    process::{ExitCode, ExitStatus},
-};
+use std::env;
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
+use std::process::{ExitCode, ExitStatus};
 
 use cli::Profile;
 

@@ -1,16 +1,13 @@
-use log;
-use std::{
-    fs::File,
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::fs::File;
+use std::io::Read;
+use std::path::{Path, PathBuf};
 
 use async_std::net::TcpStream;
-use async_tungstenite::{
-    tungstenite::{self, Message},
-    WebSocketStream,
-};
-use futures::{stream::StreamExt, SinkExt};
+use async_tungstenite::tungstenite::{self, Message};
+use async_tungstenite::WebSocketStream;
+use futures::stream::StreamExt;
+use futures::SinkExt;
+use log;
 
 use super::{RpcRequest, RpcResponse};
 

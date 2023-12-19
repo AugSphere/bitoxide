@@ -49,27 +49,32 @@ impl NS {
     ///
     /// **RAM cost: 0.1 GB**
     ///
-    /// Function that is used to try and hack servers to steal money and gain hacking experience.
-    /// The runtime for this command depends on your hacking level and the target server’s
-    /// security level when this function is called. In order to hack a server you must first gain root access to that server
-    /// and also have the required hacking level.
+    /// Function that is used to try and hack servers to steal money and gain
+    /// hacking experience. The runtime for this command depends on your
+    /// hacking level and the target server’s security level when this
+    /// function is called. In order to hack a server you must first gain root
+    /// access to that server and also have the required hacking level.
     ///
-    /// Returns a promise that resolves to the amount of money stolen (which is zero if the hack is unsuccessful).
+    /// Returns a promise that resolves to the amount of money stolen (which is
+    /// zero if the hack is unsuccessful).
     ///
-    /// A script can hack a server from anywhere. It does not need to be running on the same
-    /// server to hack that server. For example, you can create a script that hacks the `foodnstuff`
-    /// server and run that script on any server in the game.
+    /// A script can hack a server from anywhere. It does not need to be running
+    /// on the same server to hack that server. For example, you can create
+    /// a script that hacks the `foodnstuff` server and run that script on
+    /// any server in the game.
     ///
-    /// A successful `hack()` on a server will raise that server’s security level by 0.002.
+    /// A successful `hack()` on a server will raise that server’s security
+    /// level by 0.002.
     ///
     /// # Panics
     /// Will panic if JS Promise resolves to something other than [`f64`].
     ///
-    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
-    /// requested than are available. **Bitburner is seemingly not able to
-    /// kill the script in this case, or catch the exception**.
-    /// For this reason you should validate the arguments before
-    /// calling [`NS::hack`], [`NS::grow`], or [`NS::weaken`].
+    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for
+    /// example if more threads are requested than are available.
+    /// **Bitburner is seemingly not able to kill the script in this case,
+    /// or catch the exception**. For this reason you should validate the
+    /// arguments before calling [`NS::hack`], [`NS::grow`], or
+    /// [`NS::weaken`].
     ///
     /// # Examples
     /// ```rust
@@ -95,42 +100,52 @@ impl NS {
     ///
     /// **RAM cost: 0.15 GB**
     ///
-    /// Use your hacking skills to increase the amount of money available on a server.
+    /// Use your hacking skills to increase the amount of money available on a
+    /// server.
     ///
-    /// Returns the total effective multiplier that was applied to the server's money ([`f64`]) (after both additive and multiplicative growth).
+    /// Returns the total effective multiplier that was applied to the server's
+    /// money ([`f64`]) (after both additive and multiplicative growth).
     ///
-    /// Once the grow is complete, $1 is added to the server's available money for every script thread. This additive
-    /// growth allows for rescuing a server even after it is emptied.
+    /// Once the grow is complete, $1 is added to the server's available money
+    /// for every script thread. This additive growth allows for rescuing a
+    /// server even after it is emptied.
     ///
-    /// After this addition, the thread count is also used to determine a multiplier, which the server's money is then
-    /// multiplied by.
+    /// After this addition, the thread count is also used to determine a
+    /// multiplier, which the server's money is then multiplied by.
     ///
-    /// The multiplier scales exponentially with thread count, and its base depends on the server's security
-    /// level and in inherent "growth" statistic that varies between different servers.
+    /// The multiplier scales exponentially with thread count, and its base
+    /// depends on the server's security level and in inherent "growth"
+    /// statistic that varies between different servers.
     ///
-    /// [`NS::getServerGrowth`] can be used to check the inherent growth statistic of a server.
+    /// [`NS::getServerGrowth`] can be used to check the inherent growth
+    /// statistic of a server.
     ///
-    /// [`NS::growthAnalyze`] can be used to determine the number of threads needed for a specified
-    /// multiplicative portion of server growth.
+    /// [`NS::growthAnalyze`] can be used to determine the number of threads
+    /// needed for a specified multiplicative portion of server growth.
     ///
-    /// To determine the effect of a single grow, obtain access to the Formulas API and use
-    /// [`HackingFormulas::growPercent`], or invert [`NS::growthAnalyze`].
+    /// To determine the effect of a single grow, obtain access to the Formulas
+    /// API and use [`HackingFormulas::growPercent`], or invert
+    /// [`NS::growthAnalyze`].
     ///
-    /// Like [`NS::hack`], [`NS::grow`] can be called on any hackable server, regardless of where the script is
-    /// running. Hackable servers are any servers not owned by the player.
+    /// Like [`NS::hack`], [`NS::grow`] can be called on any hackable server,
+    /// regardless of where the script is running. Hackable servers are any
+    /// servers not owned by the player.
     ///
-    /// The `grow()` command requires root access to the target server, but there is no required hacking
-    /// level to run the command. It also raises the security level of the target server based on the number of threads.
-    /// The security increase can be determined using [`NS::growthAnalyzeSecurity`].
+    /// The `grow()` command requires root access to the target server, but
+    /// there is no required hacking level to run the command. It also
+    /// raises the security level of the target server based on the number of
+    /// threads. The security increase can be determined using
+    /// [`NS::growthAnalyzeSecurity`].
     ///
     /// # Panics
     /// Will panic if JS Promise resolves to something other than [`f64`].
     ///
-    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
-    /// requested than are available. **Bitburner is seemingly not able to
-    /// kill the script in this case, or catch the exception**.
-    /// For this reason you should validate the arguments before
-    /// calling [`NS::hack`], [`NS::grow`], or [`NS::weaken`].
+    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for
+    /// example if more threads are requested than are available.
+    /// **Bitburner is seemingly not able to kill the script in this case,
+    /// or catch the exception**. For this reason you should validate the
+    /// arguments before calling [`NS::hack`], [`NS::grow`], or
+    /// [`NS::weaken`].
     pub async unsafe fn grow(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
         self.grow_shim(host, opts).await.unchecked_into_f64()
     }
@@ -139,24 +154,29 @@ impl NS {
     ///
     /// **RAM cost: 0.15 GB**
     ///
-    /// Use your hacking skills to attack a server’s security, lowering the server’s security level.
-    /// The runtime for this function depends on your hacking level and the target server’s security
-    /// level when this function is called. This function lowers the security level of the target server by 0.05.
+    /// Use your hacking skills to attack a server’s security, lowering the
+    /// server’s security level. The runtime for this function depends on
+    /// your hacking level and the target server’s security level when this
+    /// function is called. This function lowers the security level of the
+    /// target server by 0.05.
     ///
-    /// Returns a promise that resolves to the value by which security was reduced.
+    /// Returns a promise that resolves to the value by which security was
+    /// reduced.
     ///
-    /// Like [`NS::hack`] and [`NS::grow`], [`NS::weaken`] can be called on any server, regardless of
-    /// where the script is running. This function requires root access to the target server, but
-    /// there is no required hacking level to run the function.
+    /// Like [`NS::hack`] and [`NS::grow`], [`NS::weaken`] can be called on any
+    /// server, regardless of where the script is running. This function
+    /// requires root access to the target server, but there is no required
+    /// hacking level to run the function.
     ///
     /// # Panics
     /// Will panic if JS Promise resolves to something other than [`f64`].
     ///
-    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
-    /// requested than are available. **Bitburner is seemingly not able to
-    /// kill the script in this case, or catch the exception**.
-    /// For this reason you should validate the arguments before
-    /// calling [`NS::hack`], [`NS::grow`], or [`NS::weaken`].
+    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for
+    /// example if more threads are requested than are available.
+    /// **Bitburner is seemingly not able to kill the script in this case,
+    /// or catch the exception**. For this reason you should validate the
+    /// arguments before calling [`NS::hack`], [`NS::grow`], or
+    /// [`NS::weaken`].
     pub async unsafe fn weaken(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
         self.weaken_shim(host, opts).await.unchecked_into_f64()
     }
@@ -165,11 +185,13 @@ impl NS {
     ///
     /// **RAM cost: 1 GB**
     ///
-    /// Returns the security decrease that would occur if a weaken with this many threads happened.
+    /// Returns the security decrease that would occur if a weaken with this
+    /// many threads happened.
     ///
     /// # Arguments
     /// * threads - Amount of threads that will be used.
-    /// * cores - Optional. The number of cores of the server that would run weaken.
+    /// * cores - Optional. The number of cores of the server that would run
+    ///   weaken.
     pub fn weaken_analyze(self: &NS, threads: u8, cores: Option<u8>) -> f64 {
         self.weaken_analyze_shim(threads, cores)
             .unchecked_into_f64()
@@ -179,11 +201,13 @@ impl NS {
     ///
     /// **RAM cost: 1 GB**
     ///
-    /// Returns the part of the specified server’s money you will steal with a single thread hack.
+    /// Returns the part of the specified server’s money you will steal with a
+    /// single thread hack.
     ///
-    /// Like other basic hacking analysis functions, this calculation uses the current status of the player and server.
-    /// To calculate using hypothetical server or player status,
-    /// obtain access to the Formulas API and use [HackingFormulas::hackPercent].
+    /// Like other basic hacking analysis functions, this calculation uses the
+    /// current status of the player and server. To calculate using
+    /// hypothetical server or player status, obtain access to the Formulas
+    /// API and use [HackingFormulas::hackPercent].
     ///
     /// # Examples
     /// ```rust
@@ -192,7 +216,8 @@ impl NS {
     /// ```
     /// This means that if hack the foodnstuff server using a single thread,
     /// then you will steal 1%, or 0.01 of its total money.
-    /// If you hack using N threads, then you will steal N*0.01 times its total money.
+    /// If you hack using N threads, then you will steal N*0.01 times its total
+    /// money.
     pub fn hack_analyze(self: &NS, host: &str) -> f64 {
         self.hack_analyze_shim(host).unchecked_into_f64()
     }
@@ -216,24 +241,26 @@ impl NS {
 
     /// Prints one or more values or variables to the script’s logs.
     ///
-    /// If the argument is a string, you can color code your message by prefixing your
-    /// string with one of these strings:
+    /// If the argument is a string, you can color code your message by
+    /// prefixing your string with one of these strings:
     ///
-    /// - `"ERROR"`: The whole string will be printed in red. Use this prefix to indicate
-    ///   that an error has occurred.
+    /// - `"ERROR"`: The whole string will be printed in red. Use this prefix to
+    ///   indicate that an error has occurred.
     ///
-    /// - `"SUCCESS"`: The whole string will be printed in green, similar to the default
-    ///   theme of the Terminal. Use this prefix to indicate that something is correct.
+    /// - `"SUCCESS"`: The whole string will be printed in green, similar to the
+    ///   default theme of the Terminal. Use this prefix to indicate that
+    ///   something is correct.
     ///
-    /// - `"WARN"`: The whole string will be printed in yellow. Use this prefix to
-    ///   indicate that you or a user of your script should be careful of something.
+    /// - `"WARN"`: The whole string will be printed in yellow. Use this prefix
+    ///   to indicate that you or a user of your script should be careful of
+    ///   something.
     ///
-    /// - `"INFO"`: The whole string will be printed in purplish blue. Use this prefix to
-    ///   remind yourself or a user of your script of something. Think of this prefix as
-    ///   indicating an FYI (for your information).
+    /// - `"INFO"`: The whole string will be printed in purplish blue. Use this
+    ///   prefix to remind yourself or a user of your script of something. Think
+    ///   of this prefix as indicating an FYI (for your information).
     ///
-    /// For custom coloring, use ANSI escape sequences. The examples below use the Unicode
-    /// escape code `\u{001b}`.
+    /// For custom coloring, use ANSI escape sequences. The examples below use
+    /// the Unicode escape code `\u{001b}`.
     ///
     /// # Examples
     /// ```rust
@@ -270,8 +297,8 @@ impl NS {
     /// **RAM cost: 0.2 GB**
     ///
     /// Returns a [`Vec`] containing the hostnames of all servers that are one
-    /// node way from the specified target server. If specified host does not exist, returns
-    /// [`None`].
+    /// node way from the specified target server. If specified host does not
+    /// exist, returns [`None`].
     ///
     /// # Examples
     /// ```rust

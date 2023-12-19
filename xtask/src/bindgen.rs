@@ -1,9 +1,7 @@
-use std::{
-    fs::OpenOptions,
-    io::{BufRead as _, BufReader, Read as _, Result as IoResult, Seek, Write},
-    path::{Path, PathBuf},
-    process::{Command, ExitStatus},
-};
+use std::fs::OpenOptions;
+use std::io::{BufRead as _, BufReader, Read as _, Result as IoResult, Seek, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitStatus};
 
 use base64::write::EncoderWriter;
 

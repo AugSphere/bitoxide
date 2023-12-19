@@ -1,5 +1,6 @@
-use clap::Parser;
 use std::process::ExitCode;
+
+use clap::Parser;
 use xtask::{
     bindgen, cli, compile_wasm, exit_code_from_status, get_wasm_artifact_paths, js_output_path,
     server,

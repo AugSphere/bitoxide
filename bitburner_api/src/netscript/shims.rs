@@ -1,4 +1,5 @@
-use wasm_bindgen::{prelude::*, JsValue};
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsValue;
 
 /// An argument passed into a script. For use with [`NS::args`].
 #[derive(Debug, PartialEq)]
@@ -8,18 +9,20 @@ pub enum Arg {
     String(String),
 }
 
-/// Options to affect the behavior of [`NS::hack`], [`NS::grow`], and [`NS::weaken`].
+/// Options to affect the behavior of [`NS::hack`], [`NS::grow`], and
+/// [`NS::weaken`].
 #[allow(non_snake_case)]
 #[derive(Debug, Default, Clone, Copy)]
 #[wasm_bindgen]
 pub struct BasicHGWOptions {
     /// Number of threads to use for this function.
-    /// Must be less than or equal to the number of threads the script is running with.
+    /// Must be less than or equal to the number of threads the script is
+    /// running with.
     pub threads: Option<u8>,
     /// Set to true this action will affect the stock market.
     pub stock: Option<bool>,
-    /// Number of additional milliseconds that will be spent waiting between the start of the function and when it
-    /// completes.
+    /// Number of additional milliseconds that will be spent waiting between the
+    /// start of the function and when it completes.
     pub additionalMsec: Option<f64>,
 }
 

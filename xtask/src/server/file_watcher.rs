@@ -2,10 +2,9 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use futures::channel::mpsc::{channel, Receiver};
 use notify_debouncer_mini::notify::{self, RecursiveMode};
 use notify_debouncer_mini::{new_debouncer_opt, Config};
-
-use futures::channel::mpsc::{channel, Receiver};
 
 type DebouncedPollWatcher = notify_debouncer_mini::Debouncer<notify::PollWatcher>;
 type WatcherEvents = Vec<notify_debouncer_mini::DebouncedEvent>;
