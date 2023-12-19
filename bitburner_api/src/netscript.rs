@@ -22,9 +22,6 @@ pub use shims::{Arg, BasicHGWOptions};
 impl NS {
     /// Arguments passed into the script.
     ///
-    /// # Panics
-    /// Will panic if JS side returns an unexpected type.
-    ///
     /// # Examples
     /// ```rust
     /// // hello.rs
@@ -68,7 +65,7 @@ impl NS {
     /// # Panics
     /// Will panic if JS Promise resolves to something other than [`f64`].
     ///
-    /// Invalid [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
+    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
     /// requested than are available. **Bitburner is seemingly not able to
     /// kill the script in this case, or catch the exception**.
     /// For this reason you should validate the arguments before
@@ -129,7 +126,7 @@ impl NS {
     /// # Panics
     /// Will panic if JS Promise resolves to something other than [`f64`].
     ///
-    /// Invalid [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
+    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
     /// requested than are available. **Bitburner is seemingly not able to
     /// kill the script in this case, or catch the exception**.
     /// For this reason you should validate the arguments before
@@ -155,7 +152,7 @@ impl NS {
     /// # Panics
     /// Will panic if JS Promise resolves to something other than [`f64`].
     ///
-    /// Invalid [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
+    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for example if more threads are
     /// requested than are available. **Bitburner is seemingly not able to
     /// kill the script in this case, or catch the exception**.
     /// For this reason you should validate the arguments before
@@ -169,9 +166,6 @@ impl NS {
     /// **RAM cost: 1 GB**
     ///
     /// Returns the security decrease that would occur if a weaken with this many threads happened.
-    ///
-    /// # Panics
-    /// Will panic if JS call returns something other than [`f64`].
     ///
     /// # Arguments
     /// * threads - Amount of threads that will be used.
@@ -204,9 +198,6 @@ impl NS {
     }
 
     /// Suspends the script for `millis` milliseconds.
-    ///
-    /// # Panics
-    /// Will panic if the underlying JS function does not return a Promise that resolves to `true`.
     ///
     /// # Examples
     /// ```rust
