@@ -4,7 +4,7 @@ use wasm_bindgen::{prelude::*, JsValue};
 
 #[wasm_bindgen]
 extern "C" {
-    /// Collection of all functions passed to scripts
+    /// Collection of all functions passed to scripts.
     ///
     /// # Basic usage example
     /// ```rust
@@ -41,7 +41,7 @@ extern "C" {
     #[wasm_bindgen(method, getter)]
     pub fn args(this: &NS) -> Vec<JsValue>;
 
-    /// The current script's PID
+    /// The current script's PID.
     #[wasm_bindgen(method, getter)]
     pub fn pid(this: &NS) -> f64;
 
@@ -54,17 +54,18 @@ extern "C" {
     /// security level when this function is called. In order to hack a server you must first gain root access to that server
     /// and also have the required hacking level.
     ///
+    /// Returns a promise that resolves to the amount of money stolen ([`f64`]) (which is zero if the hack is unsuccessful).
+    ///
     /// A script can hack a server from anywhere. It does not need to be running on the same
     /// server to hack that server. For example, you can create a script that hacks the `foodnstuff`
     /// server and run that script on any server in the game.
     ///
     /// A successful `hack()` on a server will raise that server’s security level by 0.002.
     ///
-    /// Returns a promise that resolves to the amount of money stolen ([`f64`]) (which is zero if the hack is unsuccessful).
     /// # Examples
     /// ```rust
     /// #[wasm_bindgen]
-    /// pub async fn main_rs(ns: &bitburner_api::NS) {
+    /// pub async fn main_rs(ns: &NS) {
     ///     let amount = ns.hack("foodnstuff".to_owned(), None).await;
     ///     ns.print(&format!("Got {:?}", amount.unchecked_into_f64()));
     /// }
@@ -90,6 +91,8 @@ extern "C" {
     /// The runtime for this function depends on your hacking level and the target server’s security
     /// level when this function is called. This function lowers the security level of the target server by 0.05.
     ///
+    /// Returns a promise that resolves to the value by which security was reduced ([`f64`]).
+    ///
     /// Like [`NS::hack`] and [`NS::grow`], [`NS::weaken`] can be called on any server, regardless of
     /// where the script is running. This function requires root access to the target server, but
     /// there is no required hacking level to run the function.
@@ -99,8 +102,6 @@ extern "C" {
     /// let current_security = ns.getServerSecurityLevel("foodnstuff");
     /// current_security -= ns.weaken("foodnstuff").await;
     /// ```
-    ///
-    /// Returns a promise that resolves to the value by which security was reduced ([`f64`]).
     #[wasm_bindgen(catch, method)]
     pub async fn weaken(
         this: &NS,
@@ -113,6 +114,8 @@ extern "C" {
     /// **RAM cost: 0.15 GB**
     ///
     /// Use your hacking skills to increase the amount of money available on a server.
+    ///
+    /// Returns the total effective multiplier that was applied to the server's money ([`f64`]) (after both additive and multiplicative growth).
     ///
     /// Once the grow is complete, $1 is added to the server's available money for every script thread. This additive
     /// growth allows for rescuing a server even after it is emptied.
@@ -143,8 +146,6 @@ extern "C" {
     /// let current_money = ns.getServerMoneyAvailable("n00dles");
     /// currentMoney *= ns.grow("foodnstuff").await;
     /// ```
-    ///
-    /// Returns the total effective multiplier that was applied to the server's money ([`f64`]) (after both additive and multiplicative growth).
     #[wasm_bindgen(catch, method)]
     pub async fn grow(
         this: &NS,
@@ -152,10 +153,7 @@ extern "C" {
         opts: Option<BasicHGWOptions>,
     ) -> Result<JsValue, JsValue>;
 
-    /// Suspends the script for n milliseconds.
-    ///
-    /// # Arguments
-    /// * millis - Number of milliseconds to sleep.
+    /// Suspends the script for `millis` milliseconds.
     /// # Examples
     /// ```rust
     /// // This will count from 1 to 10 in your terminal, with one number every 5 seconds
@@ -164,23 +162,10 @@ extern "C" {
     ///     ns.sleep(5000.0).await;
     /// }
     /// ```
-    /// Returns a promise that resolves to true when the sleep is completed.
-    ///
     #[wasm_bindgen(method)]
-    pub async fn sleep(this: &NS, millis: f64) -> JsValue;
-
-    /// Suspends the script for n milliseconds. Doesn't block with concurrent calls.
-    ///
-    /// # Arguments
-    /// * millis - Number of milliseconds to sleep.
-    ///
-    /// Returns a promise that resolves to true when the sleep is completed.
-    ///
-    #[wasm_bindgen(method)]
-    pub async fn asleep(this: &NS, millis: f64) -> JsValue;
+    pub async fn sleep(this: &NS, millis: f64);
 
     /// Prints one or more values or variables to the script’s logs.
-    /// RAM cost: 0 GB
     ///
     /// If the argument is a string, you can color code your message by prefixing your
     /// string with one of these strings:
@@ -223,11 +208,42 @@ extern "C" {
     #[wasm_bindgen(method)]
     pub fn print(this: &NS, print: &str);
 
+    /// Prints a string to the Terminal.
+    ///
+    /// See [`NS::print`] for how to add color to your printed strings.
     #[wasm_bindgen(method)]
     pub fn tprint(this: &NS, print: &str);
 
+    /// Get the list of servers connected to a server.
+    ///
+    /// **RAM cost: 0.2 GB**
+    ///
+    /// Returns a [`Vec`] containing the hostnames of all servers that are one
+    /// node way from the specified target server.
+    ///
+    /// # Examples
+    /// ```rust
+    /// // All servers that are one hop from the current server.
+    /// ns.tprint("Neighbors of current server.");
+    /// let neighbors = ns.scan(None).unwrap();
+    /// for neighbor in neighbors {
+    ///     ns.tprint(&neighbor);
+    /// }
+    /// // All neighbors of n00dles.
+    /// const TARGET: &str = "n00dles";
+    /// let neighbors = ns.scan(Some(TARGET)).unwrap();
+    /// ns.tprint(&format!("Neighbors of {TARGET}."));
+    /// for neighbor in neighbors {
+    ///     ns.tprint(&neighbor);
+    /// }
+    /// ```
+    /// # Errors
+    /// Returns the JS exception as a [`JsValue`] on being called for a non-existent host.
+    ///
+    /// # Arguments
+    /// * host - Optional. Hostname of the server to scan, default to current server.
     #[wasm_bindgen(catch, method)]
-    pub fn scan(this: &NS, scan: Option<&str>) -> Result<Vec<String>, JsValue>;
+    pub fn scan(this: &NS, host: Option<&str>) -> Result<Vec<String>, JsValue>;
 
     #[wasm_bindgen(catch, method)]
     pub fn nuke(this: &NS, host: &str) -> Result<(), JsValue>;
