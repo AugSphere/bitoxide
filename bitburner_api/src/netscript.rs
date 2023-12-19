@@ -164,6 +164,45 @@ impl NS {
         self.weaken_shim(host, opts).await.unchecked_into_f64()
     }
 
+    /// Predict the effect of weaken.
+    ///
+    /// **RAM cost: 1 GB**
+    ///
+    /// Returns the security decrease that would occur if a weaken with this many threads happened.
+    ///
+    /// # Panics
+    /// Will panic if JS call returns something other than [`f64`].
+    ///
+    /// # Arguments
+    /// * threads - Amount of threads that will be used.
+    /// * cores - Optional. The number of cores of the server that would run weaken.
+    pub fn weaken_analyze(self: &NS, threads: u8, cores: Option<u8>) -> f64 {
+        self.weaken_analyze_shim(threads, cores)
+            .unchecked_into_f64()
+    }
+
+    /// Get the part of money stolen with a single thread.
+    ///
+    /// **RAM cost: 1 GB**
+    ///
+    /// Returns the part of the specified server’s money you will steal with a single thread hack.
+    ///
+    /// Like other basic hacking analysis functions, this calculation uses the current status of the player and server.
+    /// To calculate using hypothetical server or player status,
+    /// obtain access to the Formulas API and use [HackingFormulas::hackPercent].
+    ///
+    /// # Examples
+    /// ```rust
+    /// // For example, assume the following returns 0.01:
+    /// ns.hack_analyze("foodnstuff")
+    /// ```
+    /// This means that if hack the foodnstuff server using a single thread,
+    /// then you will steal 1%, or 0.01 of its total money.
+    /// If you hack using N threads, then you will steal N*0.01 times its total money.
+    pub fn hack_analyze(self: &NS, host: &str) -> f64 {
+        self.hack_analyze_shim(host).unchecked_into_f64()
+    }
+
     /// Suspends the script for `millis` milliseconds.
     ///
     /// # Panics

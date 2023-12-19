@@ -46,6 +46,12 @@ extern "C" {
         opts: Option<BasicHGWOptions>,
     ) -> JsValue;
 
+    #[wasm_bindgen(method, js_name = weakenAnalyze)]
+    pub(super) fn weaken_analyze_shim(this: &NS, threads: u8, cores: Option<u8>) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = hackAnalyze)]
+    pub(super) fn hack_analyze_shim(this: &NS, host: &str) -> JsValue;
+
     #[wasm_bindgen(method, js_name = sleep)]
     pub(super) async fn sleep_shim(this: &NS, millis: f64) -> JsValue;
 
