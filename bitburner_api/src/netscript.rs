@@ -117,15 +117,15 @@ impl NS {
     /// depends on the server's security level and in inherent "growth"
     /// statistic that varies between different servers.
     ///
-    /// [`NS::getServerGrowth`] can be used to check the inherent growth
+    /// [`NS::get_server_growth`] can be used to check the inherent growth
     /// statistic of a server.
     ///
-    /// [`NS::growthAnalyze`] can be used to determine the number of threads
+    /// [`NS::growth_analyze`] can be used to determine the number of threads
     /// needed for a specified multiplicative portion of server growth.
     ///
     /// To determine the effect of a single grow, obtain access to the Formulas
     /// API and use [`HackingFormulas::growPercent`], or invert
-    /// [`NS::growthAnalyze`].
+    /// [`NS::growth_analyze`].
     ///
     /// Like [`NS::hack`], [`NS::grow`] can be called on any hackable server,
     /// regardless of where the script is running. Hackable servers are any
@@ -135,7 +135,7 @@ impl NS {
     /// there is no required hacking level to run the command. It also
     /// raises the security level of the target server based on the number of
     /// threads. The security increase can be determined using
-    /// [`NS::growthAnalyzeSecurity`].
+    /// [`NS::growth_analyze_security`].
     ///
     /// # Panics
     /// Will panic if JS Promise resolves to something other than [`f64`].
@@ -192,7 +192,7 @@ impl NS {
     /// * threads - Amount of threads that will be used.
     /// * cores - Optional. The number of cores of the server that would run
     ///   weaken.
-    pub fn weaken_analyze(self: &NS, threads: u8, cores: Option<u8>) -> f64 {
+    pub fn weaken_analyze(self: &NS, threads: u32, cores: Option<u32>) -> f64 {
         self.weaken_analyze_shim(threads, cores)
             .unchecked_into_f64()
     }
@@ -207,7 +207,7 @@ impl NS {
     /// Like other basic hacking analysis functions, this calculation uses the
     /// current status of the player and server. To calculate using
     /// hypothetical server or player status, obtain access to the Formulas
-    /// API and use [HackingFormulas::hackPercent].
+    /// API and use [`HackingFormulas::hackPercent`].
     ///
     /// # Examples
     /// ```rust
@@ -220,6 +220,106 @@ impl NS {
     /// money.
     pub fn hack_analyze(self: &NS, host: &str) -> f64 {
         self.hack_analyze_shim(host).unchecked_into_f64()
+    }
+
+    /// Get the security increase for a number of threads.
+    ///
+    /// **RAM cost: 1 GB**
+    ///
+    /// Returns the security increase that would occur if a hack with this many
+    /// threads happened.
+    ///
+    /// # Arguments
+    /// * threads - Amount of threads that will be used.
+    /// * hostname - Hostname of the target server. The number of threads is
+    ///   limited to the number needed to hack the server's maximum amount of
+    ///   money.
+    pub fn hack_analyze_security(self: &NS, threads: u32, hostname: Option<&str>) -> f64 {
+        self.hack_analyze_security_shim(threads, hostname)
+            .unchecked_into_f64()
+    }
+
+    /// Get the chance of successfully hacking a server.
+    ///
+    /// **RAM cost: 1 GB**
+    ///
+    /// Returns the chance you have of successfully hacking the specified
+    /// server.
+    ///
+    /// This returned value is in decimal form, not percentage.
+    ///
+    /// Like other basic hacking analysis functions, this calculation uses the
+    /// current status of the player and server. To calculate using
+    /// hypothetical server or player status, obtain access to the Formulas API
+    /// and use [`HackingFormulas::hackChance`].
+    ///
+    /// # Arguments
+    /// * host - Hostname of the target server.
+    pub fn hack_analyze_chance(self: &NS, host: &str) -> f64 {
+        self.hack_analyze_chance_shim(host).unchecked_into_f64()
+    }
+
+    /// Calculate the number of grow threads needed for a given multiplicative
+    /// growth factor.
+    ///
+    /// **RAM cost: 1 GB**
+    ///
+    /// This function returns the total decimal number of [`NS::grow`] threads
+    /// needed in order to multiply the money available on the specified
+    /// server by a given multiplier, if all threads are executed at the
+    /// server's current security level, regardless of how many threads are
+    /// assigned to each call.
+    ///
+    /// Note that there is also an additive factor that is applied before the
+    /// multiplier. Each [`NS::grow`] call will add $1 to the host's money
+    /// for each thread before applying the multiplier for its thread count.
+    /// This means that at extremely low starting money, fewer threads would
+    /// be needed to apply the same effective multiplier than
+    /// what is calculated by growthAnalyze.
+    ///
+    /// Like other basic hacking analysis functions, this calculation uses the
+    /// current status of the player and server. To calculate using
+    /// hypothetical server or player status, obtain access to the Formulas API
+    /// and use [`HackingFormulas::growThreads`].
+    ///
+    /// # Examples
+    /// ```rust
+    /// // calculate number of grow threads to apply 2x growth multiplier on n00dles (does not include the additive growth).
+    /// let grow_threads = ns.growth_analyze("n00dles", 2.0);
+    /// ```
+    /// # Arguments
+    /// * host - Hostname of the target server.
+    /// * multiplier - Multiplier that will be applied to a server's money after
+    ///   applying additive growth. Decimal form.
+    /// * cores - Number of cores on the host running the grow function.
+    ///   Optional, defaults to 1.
+    pub fn growth_analyze(self: &NS, host: &str, multiplier: f64, cores: Option<u32>) -> f64 {
+        self.growth_analyze_shim(host, multiplier, cores)
+            .unchecked_into_f64()
+    }
+
+    /// Calculate the security increase for a number of grow threads.
+    ///
+    /// **RAM cost: 1 GB**
+    ///
+    /// Returns the security increase that would occur if a grow with this many
+    /// threads happened.
+    ///
+    /// # Arguments
+    /// * threads - Amount of threads that will be used.
+    /// * hostname - Optional. Hostname of the target server. If provided,
+    ///   security increase is limited by the number of threads needed to reach
+    ///   maximum money.
+    /// * cores - Optional. The number of cores of the server that would run
+    ///   grow.
+    pub fn growth_analyze_security(
+        self: &NS,
+        threads: u32,
+        hostname: Option<&str>,
+        cores: Option<u32>,
+    ) -> f64 {
+        self.growth_analyze_security_shim(threads, hostname, cores)
+            .unchecked_into_f64()
     }
 
     /// Suspends the script for `millis` milliseconds.

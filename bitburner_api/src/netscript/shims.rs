@@ -18,7 +18,7 @@ pub struct BasicHGWOptions {
     /// Number of threads to use for this function.
     /// Must be less than or equal to the number of threads the script is
     /// running with.
-    pub threads: Option<u8>,
+    pub threads: Option<u32>,
     /// Set to true this action will affect the stock market.
     pub stock: Option<bool>,
     /// Number of additional milliseconds that will be spent waiting between the
@@ -50,10 +50,36 @@ extern "C" {
     ) -> JsValue;
 
     #[wasm_bindgen(method, js_name = weakenAnalyze)]
-    pub(super) fn weaken_analyze_shim(this: &NS, threads: u8, cores: Option<u8>) -> JsValue;
+    pub(super) fn weaken_analyze_shim(this: &NS, threads: u32, cores: Option<u32>) -> JsValue;
 
     #[wasm_bindgen(method, js_name = hackAnalyze)]
     pub(super) fn hack_analyze_shim(this: &NS, host: &str) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = hackAnalyzeSecurity)]
+    pub(super) fn hack_analyze_security_shim(
+        this: &NS,
+        threads: u32,
+        hostname: Option<&str>,
+    ) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = hackAnalyzeChance)]
+    pub(super) fn hack_analyze_chance_shim(this: &NS, host: &str) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = growthAnalyze)]
+    pub(super) fn growth_analyze_shim(
+        this: &NS,
+        host: &str,
+        multiplier: f64,
+        cores: Option<u32>,
+    ) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = growthAnalyzeSecurity)]
+    pub(super) fn growth_analyze_security_shim(
+        this: &NS,
+        threads: u32,
+        hostname: Option<&str>,
+        cores: Option<u32>,
+    ) -> JsValue;
 
     #[wasm_bindgen(method, js_name = sleep)]
     pub(super) async fn sleep_shim(this: &NS, millis: f64) -> JsValue;
