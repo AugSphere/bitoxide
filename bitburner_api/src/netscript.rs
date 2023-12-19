@@ -419,4 +419,91 @@ impl NS {
     pub fn scan(self: &NS, host: Option<&str>) -> Option<Vec<String>> {
         self.scan_shim(host).ok()
     }
+
+    /// Returns the player’s current hacking level.
+    ///
+    /// **RAM cost: 0.05 GB**
+    pub fn get_hacking_level(self: &NS) -> u32 {
+        self.get_hacking_level_shim().unchecked_into_f64() as u32
+    }
+
+    /// Get money available on a server.
+    ///
+    /// **RAM cost: 0.1 GB**
+    ///
+    /// Returns the amount of money available on a server.
+    /// Running this function on the home computer will return the player’s
+    /// money.
+    pub fn get_server_money_available(self: &NS, host: &str) -> f64 {
+        self.get_server_money_available_shim(host)
+    }
+
+    /// Get the maximum money available on a server.
+    ///
+    /// **RAM cost: 0.1 GB**
+    ///
+    /// Returns the maximum amount of money that can be available on a server.
+    pub fn get_server_max_money(self: &NS, host: &str) -> f64 {
+        self.get_server_max_money_shim(host)
+    }
+
+    /// Get a server growth parameter.
+    ///
+    /// **RAM cost: 0.1 GB**
+    ///
+    /// Returns the server’s intrinsic “growth parameter”. This growth
+    /// parameter is a number typically between 0 and 100 that represents
+    /// how quickly the server’s money grows. This parameter affects the
+    /// percentage by which the server’s money is increased when using the
+    /// grow function. A higher growth parameter will result in a
+    /// higher percentage increase from grow.
+    pub fn get_server_growth(self: &NS, host: &str) -> f64 {
+        self.get_server_growth_shim(host)
+    }
+
+    /// Get server security level.
+    ///
+    /// **RAM cost: 0.1 GB**
+    ///
+    /// Returns the security level of the target server. A server’s security
+    /// level is denoted by a number, typically between 1 and 100
+    /// (but it can go above 100).
+    pub fn get_server_security_level(self: &NS, host: &str) -> f64 {
+        self.get_server_security_level_shim(host)
+    }
+
+    /// Returns the minimum security level of the target server.
+    ///
+    /// **RAM cost: 0.1 GB**
+    pub fn get_server_min_security_level(self: &NS, host: &str) -> f64 {
+        self.get_server_min_security_level_shim(host)
+    }
+
+    /// Get the base security level of a server.
+    ///
+    /// **RAM cost: 0.1 GB**
+    ///
+    /// Returns the base security level of the target server.
+    /// For the server's actual security level, use
+    /// [`NS::get_server_security_level`].
+    pub fn get_server_base_security_level(self: &NS, host: &str) -> f64 {
+        self.get_server_base_security_level_shim(host)
+    }
+
+    /// Returns the required hacking level of the target server.
+    ///
+    /// **RAM cost: 0.1 GB**
+    pub fn get_server_required_hacking_level(self: &NS, host: &str) -> u32 {
+        self.get_server_required_hacking_level_shim(host)
+            .unchecked_into_f64() as u32
+    }
+
+    /// Returns the number of open ports required to successfully run NUKE.exe
+    /// on the specified server.
+    ///
+    /// **RAM cost: 0.1 GB**
+    pub fn get_server_num_ports_required(self: &NS, host: &str) -> u32 {
+        self.get_server_num_ports_required_shim(host)
+            .unchecked_into_f64() as u32
+    }
 }

@@ -110,6 +110,33 @@ extern "C" {
 
     #[wasm_bindgen(catch, method, js_name = sqlinject)]
     pub(super) fn sqlinject_shim(this: &NS, host: &str) -> Result<(), JsValue>;
+
+    #[wasm_bindgen(method, js_name = getHackingLevel)]
+    pub(super) fn get_hacking_level_shim(this: &NS) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = getServerMoneyAvailable)]
+    pub(super) fn get_server_money_available_shim(this: &NS, host: &str) -> f64;
+
+    #[wasm_bindgen(method, js_name = getServerMaxMoney)]
+    pub(super) fn get_server_max_money_shim(this: &NS, host: &str) -> f64;
+
+    #[wasm_bindgen(method, js_name = getServerGrowth)]
+    pub(super) fn get_server_growth_shim(this: &NS, host: &str) -> f64;
+
+    #[wasm_bindgen(method, js_name = getServerSecurityLevel)]
+    pub(super) fn get_server_security_level_shim(this: &NS, host: &str) -> f64;
+
+    #[wasm_bindgen(method, js_name = getServerMinSecurityLevel)]
+    pub(super) fn get_server_min_security_level_shim(this: &NS, host: &str) -> f64;
+
+    #[wasm_bindgen(method, js_name = getServerBaseSecurityLevel)]
+    pub(super) fn get_server_base_security_level_shim(this: &NS, host: &str) -> f64;
+
+    #[wasm_bindgen(method, js_name = getServerRequiredHackingLevel)]
+    pub(super) fn get_server_required_hacking_level_shim(this: &NS, host: &str) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = getServerNumPortsRequired)]
+    pub(super) fn get_server_num_ports_required_shim(this: &NS, host: &str) -> JsValue;
 }
 
 pub(super) fn parse_args(object: Vec<JsValue>) -> Result<Vec<Arg>, String> {
