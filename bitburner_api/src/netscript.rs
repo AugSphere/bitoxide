@@ -560,6 +560,6 @@ impl NS {
             Arg::F64(number) => JsValue::from_f64(*number),
             Arg::Bool(flag) => JsValue::from_bool(*flag),
         }));
-        self.get_running_script_shim(filename, hostname, &args_js)
+        self.get_running_script_shim(&filename, hostname.as_deref(), &args_js)
     }
 }

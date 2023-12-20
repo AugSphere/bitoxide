@@ -143,8 +143,8 @@ extern "C" {
     #[wasm_bindgen(method, variadic, js_name = getRunningScript)]
     pub(super) fn get_running_script_shim(
         this: &NS,
-        filename: JsValue,
-        hostname: Option<String>,
+        filename: &JsValue,
+        hostname: Option<&str>,
         args: &JsValue,
     ) -> Option<RunningScript>;
 }
