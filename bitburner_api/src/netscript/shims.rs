@@ -1,8 +1,10 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
+use crate::netscript::RunningScript;
+
 /// An argument passed into a script. For use with [`NS::args`].
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Arg {
     Bool(bool),
     F64(f64),
@@ -137,6 +139,14 @@ extern "C" {
 
     #[wasm_bindgen(method, js_name = getServerNumPortsRequired)]
     pub(super) fn get_server_num_ports_required_shim(this: &NS, host: &str) -> JsValue;
+
+    #[wasm_bindgen(method, variadic, js_name = getRunningScript)]
+    pub(super) fn get_running_script_shim(
+        this: &NS,
+        filename: JsValue,
+        hostname: Option<String>,
+        args: &JsValue,
+    ) -> Option<RunningScript>;
 }
 
 pub(super) fn parse_args(object: Vec<JsValue>) -> Result<Vec<Arg>, String> {

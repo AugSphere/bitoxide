@@ -1,7 +1,9 @@
 //! Bindings for the [Netscript interface](NS).
 
+mod running_script;
 mod shims;
 
+pub use running_script::{RunningScript, TailProperties};
 /// Collection of all functions passed to scripts.
 ///
 /// # Basic usage example
@@ -18,6 +20,15 @@ mod shims;
 /// ```
 pub use shims::NS;
 pub use shims::{Arg, BasicHGWOptions};
+use wasm_bindgen::JsValue;
+
+/// Type for identifying scripts by either id or filename in
+/// [`NS::get_running_script`]
+#[derive(Debug, PartialEq, Clone)]
+pub enum FilenameOrPID {
+    Pid(u32),
+    Name(String),
+}
 
 impl NS {
     /// Arguments passed into the script.
@@ -505,5 +516,50 @@ impl NS {
     pub fn get_server_num_ports_required(self: &NS, host: &str) -> u32 {
         self.get_server_num_ports_required_shim(host)
             .unchecked_into_f64() as u32
+    }
+
+    /// Get general info about a running script.
+    ///
+    /// **RAM cost: 0.3 GB**
+    ///
+    /// Running with no args returns current script.
+    /// If you use a PID as the first parameter, the hostname and args
+    /// parameters are unnecessary. If hostname is omitted while filename is
+    /// used as the first parameter, hostname defaults to the server the calling
+    /// script is running on. Remember that a script is semi-uniquely
+    /// identified by both its name and its arguments. (You can run multiple
+    /// copies of scripts with the same arguments, but for the purposes of
+    /// functions like this that check based on filename, the filename plus
+    /// arguments forms the key.)
+    ///
+    /// Returns the info about the running script if found, and [`None`]
+    /// otherwise.
+    ///
+    /// # Arguments
+    /// * filename - Optional. Filename or PID of the script.
+    /// * hostname - Hostname of target server. Optional, defaults to the server
+    ///   the calling script is running on.
+    /// * args  - Arguments to specify/identify the script. Optional, when
+    ///   looking for scripts run without arguments.
+    pub fn get_running_script(
+        self: &NS,
+        filename: Option<FilenameOrPID>,
+        hostname: Option<&str>,
+        args: Vec<Arg>,
+    ) -> Option<RunningScript> {
+        let filename = match filename {
+            Some(FilenameOrPID::Pid(pid)) => Some(JsValue::from_f64(pid.into())),
+            Some(FilenameOrPID::Name(string)) => Some(JsValue::from_str(&string)),
+            None => None,
+        };
+        let filename = JsValue::from(filename);
+        let hostname = hostname.map(|s| s.to_owned());
+        let mut args_js = js_sys::Array::new();
+        args_js.extend(args.iter().map(|arg| match arg {
+            Arg::String(string) => JsValue::from_str(string),
+            Arg::F64(number) => JsValue::from_f64(*number),
+            Arg::Bool(flag) => JsValue::from_bool(*flag),
+        }));
+        self.get_running_script_shim(filename, hostname, &args_js)
     }
 }
