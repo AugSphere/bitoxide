@@ -14,8 +14,8 @@ impl RunningScript {
         self.filename_shim()
     }
 
-    ///  Script logs as an array. The newest log entries are at the bottom.
-    ///  Timestamps, if enabled, are placed inside `\[brackets\]` at the start
+    /// Script logs as an array. The newest log entries are at the bottom.
+    /// Timestamps, if enabled, are placed inside \[brackets\] at the start
     /// of each line.
     pub fn logs(self: &RunningScript) -> Vec<String> {
         self.logs_shim()

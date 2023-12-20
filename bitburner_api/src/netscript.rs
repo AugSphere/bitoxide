@@ -3,7 +3,10 @@
 mod running_script;
 mod shims;
 
-pub use running_script::{RunningScript, TailProperties};
+/// Properties of a script, can be obtained from [NS::get_running_script].
+pub use running_script::RunningScript;
+/// Shape and position of the `[NS::tail]` window.
+pub use running_script::TailProperties;
 /// Collection of all functions passed to scripts.
 ///
 /// # Basic usage example
@@ -108,11 +111,9 @@ impl NS {
     ///
     /// # Panics
     /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
-    /// example if more threads are requested than are available.
-    ///
-    /// **Bitburner is seemingly not able to kill the script in this case,
-    /// or catch the exception**. For this reason you should validate the
-    /// arguments before calling any of the unsafe functions.
+    /// example if more threads are requested than are available. See
+    /// [bitburner_api
+    /// docs](crate#all-async-functions-can-hang-bitburner-scripts)
     pub async unsafe fn hack_unchecked(
         self: &NS,
         host: &str,
@@ -177,11 +178,9 @@ impl NS {
     ///
     /// # Panics
     /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
-    /// example if more threads are requested than are available.
-    ///
-    /// **Bitburner is seemingly not able to kill the script in this case,
-    /// or catch the exception**. For this reason you should validate the
-    /// arguments before calling any of the unsafe functions.
+    /// example if more threads are requested than are available. See
+    /// [bitburner_api
+    /// docs](crate#all-async-functions-can-hang-bitburner-scripts)
     pub async unsafe fn grow_unchecked(
         self: &NS,
         host: &str,
@@ -227,11 +226,9 @@ impl NS {
     ///
     /// # Panics
     /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
-    /// example if more threads are requested than are available.
-    ///
-    /// **Bitburner is seemingly not able to kill the script in this case,
-    /// or catch the exception**. For this reason you should validate the
-    /// arguments before calling any of the unsafe functions.
+    /// example if more threads are requested than are available. See
+    /// [bitburner_api
+    /// docs](crate#all-async-functions-can-hang-bitburner-scripts)
     pub async unsafe fn weaken_unchecked(
         self: &NS,
         host: &str,
