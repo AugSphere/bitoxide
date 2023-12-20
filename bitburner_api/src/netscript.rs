@@ -58,7 +58,8 @@ impl NS {
 
     /// Steal a server's money.
     ///
-    /// **RAM cost: 0.1 GB**
+    /// **RAM cost: 0.5 GB** if [`BasicHGWOptions::threads`] is specified, **0.2
+    /// GB** otherwise.
     ///
     /// Function that is used to try and hack servers to steal money and gain
     /// hacking experience. The runtime for this command depends on your
@@ -77,23 +78,16 @@ impl NS {
     /// A successful `hack()` on a server will raise that server’s security
     /// level by 0.002.
     ///
-    /// # Panics
-    /// Will panic if JS Promise resolves to something other than [`f64`].
-    ///
-    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for
-    /// example if more threads are requested than are available.
-    /// **Bitburner is seemingly not able to kill the script in this case,
-    /// or catch the exception**. For this reason you should validate the
-    /// arguments before calling [`NS::hack`], [`NS::grow`], or
-    /// [`NS::weaken`].
+    /// Performs runtime checks to make sure no exception occurs in the async JS
+    /// `hack` call. If you can statically guarantee that arguments are
+    /// valid, consider using [`NS::hack_unchecked`] instead.
     ///
     /// # Examples
     /// ```rust
     /// #[wasm_bindgen]
     /// pub async fn main_rs(ns: &NS) {
-    ///     unsafe {
-    ///         let amount = ns.hack("foodnstuff", None).await;
-    ///         ns.print(&format!("Got {amount}"));
+    ///     if let Ok(amount) = ns.hack("foodnstuff", None).await {
+    ///         ns.tprint(&format!("Got {amount}"))
     ///     }
     /// }
     /// ```
@@ -103,13 +97,34 @@ impl NS {
     /// Got 0.0
     /// Script finished running
     /// ```
-    pub async unsafe fn hack(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
+    pub async fn hack(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> Result<f64, String> {
+        self.check_hgw_args(host, opts)?;
+        unsafe { Ok(self.hack_unchecked(host, opts).await) }
+    }
+
+    /// Unsafe version of [`NS::hack`].
+    ///
+    /// **RAM cost: 0.1 GB**
+    ///
+    /// # Panics
+    /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
+    /// example if more threads are requested than are available.
+    ///
+    /// **Bitburner is seemingly not able to kill the script in this case,
+    /// or catch the exception**. For this reason you should validate the
+    /// arguments before calling any of the unsafe functions.
+    pub async unsafe fn hack_unchecked(
+        self: &NS,
+        host: &str,
+        opts: Option<BasicHGWOptions>,
+    ) -> f64 {
         self.hack_shim(host, opts).await.unchecked_into_f64()
     }
 
     /// Spoof money in a server's bank account, increasing the amount available.
     ///
-    /// **RAM cost: 0.15 GB**
+    /// **RAM cost: 0.55 GB** if [`BasicHGWOptions::threads`] is specified,
+    /// **0.25 GB** otherwise.
     ///
     /// Use your hacking skills to increase the amount of money available on a
     /// server.
@@ -148,22 +163,37 @@ impl NS {
     /// threads. The security increase can be determined using
     /// [`NS::growth_analyze_security`].
     ///
-    /// # Panics
-    /// Will panic if JS Promise resolves to something other than [`f64`].
+    /// Performs runtime checks to make sure no exception occurs in the async JS
+    /// `hack` call. If you can statically guarantee that arguments are
+    /// valid, consider using [`NS::grow_unchecked`] instead.
+    pub async fn grow(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> Result<f64, String> {
+        self.check_hgw_args(host, opts)?;
+        unsafe { Ok(self.grow_unchecked(host, opts).await) }
+    }
+
+    /// Unsafe version of [`NS::grow`].
     ///
-    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for
+    /// **RAM cost: 0.15 GB**
+    ///
+    /// # Panics
+    /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
     /// example if more threads are requested than are available.
+    ///
     /// **Bitburner is seemingly not able to kill the script in this case,
     /// or catch the exception**. For this reason you should validate the
-    /// arguments before calling [`NS::hack`], [`NS::grow`], or
-    /// [`NS::weaken`].
-    pub async unsafe fn grow(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
+    /// arguments before calling any of the unsafe functions.
+    pub async unsafe fn grow_unchecked(
+        self: &NS,
+        host: &str,
+        opts: Option<BasicHGWOptions>,
+    ) -> f64 {
         self.grow_shim(host, opts).await.unchecked_into_f64()
     }
 
     /// Reduce a server's security level.
     ///
-    /// **RAM cost: 0.15 GB**
+    /// **RAM cost: 0.55 GB** if [`BasicHGWOptions::threads`] is specified,
+    /// **0.25 GB** otherwise.
     ///
     /// Use your hacking skills to attack a server’s security, lowering the
     /// server’s security level. The runtime for this function depends on
@@ -179,16 +209,34 @@ impl NS {
     /// requires root access to the target server, but there is no required
     /// hacking level to run the function.
     ///
-    /// # Panics
-    /// Will panic if JS Promise resolves to something other than [`f64`].
+    /// Performs runtime checks to make sure no exception occurs in the async JS
+    /// `hack` call. If you can statically guarantee that arguments are
+    /// valid, consider using [`NS::weaken_unchecked`] instead.
+    pub async fn weaken(
+        self: &NS,
+        host: &str,
+        opts: Option<BasicHGWOptions>,
+    ) -> Result<f64, String> {
+        self.check_hgw_args(host, opts)?;
+        unsafe { Ok(self.weaken_unchecked(host, opts).await) }
+    }
+
+    /// Unsafe version of [`NS::weaken`].
     ///
-    /// Invalid host or [`BasicHGWOptions`] can also lead to a panic, for
+    /// **RAM cost: 0.15 GB**
+    ///
+    /// # Panics
+    /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
     /// example if more threads are requested than are available.
+    ///
     /// **Bitburner is seemingly not able to kill the script in this case,
     /// or catch the exception**. For this reason you should validate the
-    /// arguments before calling [`NS::hack`], [`NS::grow`], or
-    /// [`NS::weaken`].
-    pub async unsafe fn weaken(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
+    /// arguments before calling any of the unsafe functions.
+    pub async unsafe fn weaken_unchecked(
+        self: &NS,
+        host: &str,
+        opts: Option<BasicHGWOptions>,
+    ) -> f64 {
         self.weaken_shim(host, opts).await.unchecked_into_f64()
     }
 
@@ -518,6 +566,13 @@ impl NS {
             .unchecked_into_f64() as u32
     }
 
+    /// Returns a boolean denoting whether or not the specified server exists.
+    ///
+    /// **RAM cost: 0.1 GB**
+    pub fn server_exists(self: &NS, host: &str) -> bool {
+        self.server_exists_shim(host)
+    }
+
     /// Get general info about a running script.
     ///
     /// **RAM cost: 0.3 GB**
@@ -561,5 +616,30 @@ impl NS {
             Arg::Bool(flag) => JsValue::from_bool(*flag),
         }));
         self.get_running_script_shim(&filename, hostname.as_deref(), &args_js)
+    }
+
+    /// **RAM cost: 0.4 GB** when [`BasicHGWOptions::threads`] is specified,
+    /// **0.1** otherwise
+    fn check_hgw_args(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> Result<(), String> {
+        if !self.server_exists(host) {
+            let msg = format!("Server {host} does not exist");
+            self.print(&("ERROR ".to_owned() + &msg));
+            return Err(msg);
+        }
+        if let Some(BasicHGWOptions {
+            threads: Some(requested_threads),
+            ..
+        }) = opts
+        {
+            let own_script = self.get_running_script(None, None, self.args()).unwrap();
+            let own_threads = own_script.threads();
+            if requested_threads > own_threads {
+                let msg =
+                    format!("Not enough threads available: requested {requested_threads}, script has access to {own_threads}");
+                self.print(&("ERROR ".to_owned() + &msg));
+                return Err(msg);
+            }
+        };
+        Ok(())
     }
 }

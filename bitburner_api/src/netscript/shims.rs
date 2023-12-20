@@ -39,13 +39,21 @@ extern "C" {
     pub(super) fn pid_shim(this: &NS) -> f64;
 
     #[wasm_bindgen(method, js_name = hack)]
-    pub(super) async fn hack_shim(this: &NS, host: &str, opts: Option<BasicHGWOptions>) -> JsValue;
+    pub(super) async unsafe fn hack_shim(
+        this: &NS,
+        host: &str,
+        opts: Option<BasicHGWOptions>,
+    ) -> JsValue;
 
     #[wasm_bindgen(method, js_name = grow)]
-    pub(super) async fn grow_shim(this: &NS, host: &str, opts: Option<BasicHGWOptions>) -> JsValue;
+    pub(super) async unsafe fn grow_shim(
+        this: &NS,
+        host: &str,
+        opts: Option<BasicHGWOptions>,
+    ) -> JsValue;
 
     #[wasm_bindgen(method, js_name = weaken)]
-    pub(super) async fn weaken_shim(
+    pub(super) async unsafe fn weaken_shim(
         this: &NS,
         host: &str,
         opts: Option<BasicHGWOptions>,
@@ -139,6 +147,9 @@ extern "C" {
 
     #[wasm_bindgen(method, js_name = getServerNumPortsRequired)]
     pub(super) fn get_server_num_ports_required_shim(this: &NS, host: &str) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = serverExists)]
+    pub(super) fn server_exists_shim(this: &NS, host: &str) -> bool;
 
     #[wasm_bindgen(method, variadic, js_name = getRunningScript)]
     pub(super) fn get_running_script_shim(
