@@ -33,6 +33,15 @@ pub enum FilenameOrPID {
     Name(String),
 }
 
+impl From<FilenameOrPID> for JsValue {
+    fn from(value: FilenameOrPID) -> Self {
+        match value {
+            FilenameOrPID::Pid(pid) => JsValue::from_f64(pid.into()),
+            FilenameOrPID::Name(string) => JsValue::from_str(&string),
+        }
+    }
+}
+
 impl NS {
     /// Arguments passed into the script.
     ///
@@ -653,19 +662,9 @@ impl NS {
         hostname: Option<&str>,
         args: Vec<Arg>,
     ) -> Option<RunningScript> {
-        let filename = match filename {
-            Some(FilenameOrPID::Pid(pid)) => Some(JsValue::from_f64(pid.into())),
-            Some(FilenameOrPID::Name(string)) => Some(JsValue::from_str(&string)),
-            None => None,
-        };
-        let filename = JsValue::from(filename);
+        let filename = filename.into();
         let hostname = hostname.map(|s| s.to_owned());
-        let mut args_js = js_sys::Array::new();
-        args_js.extend(args.iter().map(|arg| match arg {
-            Arg::String(string) => JsValue::from_str(string),
-            Arg::F64(number) => JsValue::from_f64(*number),
-            Arg::Bool(flag) => JsValue::from_bool(*flag),
-        }));
+        let args_js = js_sys::Array::from_iter(args.into_iter().map(|arg| JsValue::from(arg)));
         self.get_running_script_shim(&filename, hostname.as_deref(), &args_js)
     }
 

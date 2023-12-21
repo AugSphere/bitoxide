@@ -11,6 +11,33 @@ pub enum Arg {
     String(String),
 }
 
+impl From<Arg> for JsValue {
+    fn from(value: Arg) -> Self {
+        match value {
+            Arg::Bool(flag) => JsValue::from_bool(flag),
+            Arg::F64(n) => JsValue::from_f64(n),
+            Arg::String(s) => JsValue::from_str(&s),
+        }
+    }
+}
+
+impl TryFrom<JsValue> for Arg {
+    type Error = String;
+
+    fn try_from(value: JsValue) -> Result<Self, Self::Error> {
+        if let Some(bool) = value.as_bool() {
+            return Ok(Arg::Bool(bool));
+        };
+        if let Some(float) = value.as_f64() {
+            return Ok(Arg::F64(float));
+        };
+        if let Some(string) = value.as_string() {
+            return Ok(Arg::String(string));
+        };
+        Err(format!("Unexpected argument type of value: {value:?}"))
+    }
+}
+
 /// Options to affect the behavior of [`NS::hack`], [`NS::grow`], and
 /// [`NS::weaken`].
 #[allow(non_snake_case)]
@@ -173,19 +200,5 @@ extern "C" {
 }
 
 pub(super) fn parse_args(object: Vec<JsValue>) -> Result<Vec<Arg>, String> {
-    object
-        .into_iter()
-        .map(|val| {
-            if let Some(bool) = val.as_bool() {
-                return Ok(Arg::Bool(bool));
-            };
-            if let Some(float) = val.as_f64() {
-                return Ok(Arg::F64(float));
-            };
-            if let Some(string) = val.as_string() {
-                return Ok(Arg::String(string));
-            };
-            Err(format!("Unexpected argument type of value: {val:?}"))
-        })
-        .collect()
+    object.into_iter().map(|arg| arg.try_into()).collect()
 }
