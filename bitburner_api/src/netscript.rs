@@ -494,6 +494,40 @@ impl NS {
         self.tprint_shim(to_print)
     }
 
+    /// Open the tail window of a script.
+    ///
+    /// **RAM cost: 0 GB**
+    ///
+    /// Opens a script’s logs. This is functionally the same as the tail
+    /// Terminal command.
+    ///
+    /// If the function is called with no arguments, it will open the current
+    /// script’s logs.
+    ///
+    /// Otherwise, the PID or filename, hostname/ip, and args… arguments can be
+    /// used to get the logs from another script. Remember that scripts are
+    /// uniquely identified by both their names and arguments.
+    ///
+    /// # Arguments
+    /// * fn - Optional. Filename or PID of the script being tailed. If omitted,
+    ///   the current script is tailed.
+    /// * host - Optional. Hostname of the script being tailed. Defaults to the
+    ///   server this script is running on. If args are specified, this is not
+    ///   optional.
+    /// * args - Arguments for the script being tailed.
+    pub fn tail(
+        self: &NS,
+        filename: Option<FilenameOrPID>,
+        hostname: Option<&str>,
+        args: Vec<Arg>,
+    ) -> Result<(), String> {
+        let filename = filename.into();
+        let hostname = hostname.map(|s| s.to_owned());
+        let args_js = js_sys::Array::from_iter(args.into_iter().map(|arg| JsValue::from(arg)));
+        self.tail_shim(&filename, hostname.as_deref(), &args_js)
+            .map_err(|msg| format!("{msg:?}"))
+    }
+
     /// Get the list of servers connected to a server.
     ///
     /// **RAM cost: 0.2 GB**
@@ -522,6 +556,20 @@ impl NS {
         self.scan_shim(host).ok()
     }
 
+    /// Runs NUKE.exe on a server.
+    ///
+    /// **RAM cost: 0.05 GB**
+    ///
+    /// Running NUKE.exe on a target server gives you root access which means
+    /// you can execute scripts on said server. NUKE.exe must exist on your home
+    /// computer.
+    pub fn nuke(self: &NS, host: &str) -> Result<(), String> {
+        match self.nuke_shim(host) {
+            Ok(()) => Ok(()),
+            Err(msg) => Err(format!("{msg:?}")),
+        }
+    }
+
     /// Check if you have root access on a server.
     ///
     /// **RAM cost: 0.05 GB**
@@ -532,7 +580,7 @@ impl NS {
     /// @example
     /// ```rust
     /// if !ns.has_root_access("foodnstuff") {
-    ///     ns.nuke("foodnstuff");
+    ///     ns.nuke("foodnstuff").unwrap();
     /// }
     /// ```
     pub fn has_root_access(self: &NS, host: &str) -> bool {

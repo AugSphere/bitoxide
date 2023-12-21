@@ -127,6 +127,14 @@ extern "C" {
     #[wasm_bindgen(method, js_name = tprint)]
     pub(super) fn tprint_shim(this: &NS, to_print: &str);
 
+    #[wasm_bindgen(catch, method, variadic, js_name = tail)]
+    pub(super) fn tail_shim(
+        this: &NS,
+        filename: &JsValue,
+        host: Option<&str>,
+        args: &JsValue,
+    ) -> Result<(), JsValue>;
+
     #[wasm_bindgen(catch, method, js_name = scan)]
     pub(super) fn scan_shim(this: &NS, host: Option<&str>) -> Result<Vec<String>, JsValue>;
 
