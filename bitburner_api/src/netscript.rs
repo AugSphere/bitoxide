@@ -237,6 +237,37 @@ impl NS {
         self.weaken_shim(host, opts).await.unchecked_into_f64()
     }
 
+    /// Check arguments common to [`NS::hack`], [`NS::grow`], [`NS::weaken`] for correctness.
+    ///
+    /// **RAM cost: 0.4 GB** when [`BasicHGWOptions::threads`] is specified,
+    /// **0.1** otherwise
+    pub fn check_hgw_args(
+        self: &NS,
+        host: &str,
+        opts: Option<BasicHGWOptions>,
+    ) -> Result<(), String> {
+        if !self.server_exists(host) {
+            let msg = format!("Server {host} does not exist");
+            self.print(&("ERROR ".to_owned() + &msg));
+            return Err(msg);
+        }
+        if let Some(BasicHGWOptions {
+            threads: Some(requested_threads),
+            ..
+        }) = opts
+        {
+            let own_script = self.get_running_script(None, None, self.args()).unwrap();
+            let own_threads = own_script.threads();
+            if requested_threads > own_threads {
+                let msg =
+                    format!("Not enough threads available: requested {requested_threads}, script has access to {own_threads}");
+                self.print(&("ERROR ".to_owned() + &msg));
+                return Err(msg);
+            }
+        };
+        Ok(())
+    }
+
     /// Predict the effect of weaken.
     ///
     /// **RAM cost: 1 GB**
@@ -615,28 +646,5 @@ impl NS {
         self.get_running_script_shim(&filename, hostname.as_deref(), &args_js)
     }
 
-    /// **RAM cost: 0.4 GB** when [`BasicHGWOptions::threads`] is specified,
-    /// **0.1** otherwise
-    fn check_hgw_args(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> Result<(), String> {
-        if !self.server_exists(host) {
-            let msg = format!("Server {host} does not exist");
-            self.print(&("ERROR ".to_owned() + &msg));
-            return Err(msg);
-        }
-        if let Some(BasicHGWOptions {
-            threads: Some(requested_threads),
-            ..
-        }) = opts
-        {
-            let own_script = self.get_running_script(None, None, self.args()).unwrap();
-            let own_threads = own_script.threads();
-            if requested_threads > own_threads {
-                let msg =
-                    format!("Not enough threads available: requested {requested_threads}, script has access to {own_threads}");
-                self.print(&("ERROR ".to_owned() + &msg));
-                return Err(msg);
-            }
-        };
-        Ok(())
     }
 }
