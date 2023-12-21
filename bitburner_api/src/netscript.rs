@@ -61,8 +61,8 @@ impl NS {
 
     /// Steal a server's money.
     ///
-    /// **RAM cost: 0.5 GB** if [`BasicHGWOptions::threads`] is specified, **0.2
-    /// GB** otherwise.
+    /// **RAM cost: 0.55 GB** if [`BasicHGWOptions::threads`] is specified,
+    /// **0.25 GB** otherwise.
     ///
     /// Function that is used to try and hack servers to steal money and gain
     /// hacking experience. The runtime for this command depends on your
@@ -124,8 +124,8 @@ impl NS {
 
     /// Spoof money in a server's bank account, increasing the amount available.
     ///
-    /// **RAM cost: 0.55 GB** if [`BasicHGWOptions::threads`] is specified,
-    /// **0.25 GB** otherwise.
+    /// **RAM cost: 0.60 GB** if [`BasicHGWOptions::threads`] is specified,
+    /// **0.30 GB** otherwise.
     ///
     /// Use your hacking skills to increase the amount of money available on a
     /// server.
@@ -191,8 +191,8 @@ impl NS {
 
     /// Reduce a server's security level.
     ///
-    /// **RAM cost: 0.55 GB** if [`BasicHGWOptions::threads`] is specified,
-    /// **0.25 GB** otherwise.
+    /// **RAM cost: 0.60 GB** if [`BasicHGWOptions::threads`] is specified,
+    /// **0.30 GB** otherwise.
     ///
     /// Use your hacking skills to attack a server’s security, lowering the
     /// server’s security level. The runtime for this function depends on
@@ -240,8 +240,8 @@ impl NS {
     /// Check arguments common to [`NS::hack`], [`NS::grow`], [`NS::weaken`] for
     /// correctness.
     ///
-    /// **RAM cost: 0.4 GB** when [`BasicHGWOptions::threads`] is specified,
-    /// **0.1** otherwise
+    /// **RAM cost: 0.45 GB** when [`BasicHGWOptions::threads`] is specified,
+    /// **0.15** otherwise
     pub fn check_hgw_args(
         self: &NS,
         host: &str,
@@ -249,6 +249,11 @@ impl NS {
     ) -> Result<(), String> {
         if !self.server_exists(host) {
             let msg = format!("Server {host} does not exist");
+            self.print(&("ERROR ".to_owned() + &msg));
+            return Err(msg);
+        }
+        if !self.has_root_access(host) {
+            let msg = format!("No root access to {host}");
             self.print(&("ERROR ".to_owned() + &msg));
             return Err(msg);
         }
@@ -506,6 +511,23 @@ impl NS {
     /// ```
     pub fn scan(self: &NS, host: Option<&str>) -> Option<Vec<String>> {
         self.scan_shim(host).ok()
+    }
+
+    /// Check if you have root access on a server.
+    ///
+    /// **RAM cost: 0.05 GB**
+    ///
+    /// Returns a boolean indicating whether or not the player has root access
+    /// to the specified target server.
+    ///
+    /// @example
+    /// ```rust
+    /// if !ns.has_root_access("foodnstuff") {
+    ///     ns.nuke("foodnstuff");
+    /// }
+    /// ```
+    pub fn has_root_access(self: &NS, host: &str) -> bool {
+        self.has_root_access_shim(host)
     }
 
     /// Returns the player’s current hacking level.

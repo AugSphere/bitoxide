@@ -121,6 +121,9 @@ extern "C" {
     #[wasm_bindgen(catch, method, js_name = sqlinject)]
     pub(super) fn sqlinject_shim(this: &NS, host: &str) -> Result<(), JsValue>;
 
+    #[wasm_bindgen(method, js_name = hasRootAccess)]
+    pub(super) fn has_root_access_shim(this: &NS, host: &str) -> bool;
+
     #[wasm_bindgen(method, js_name = getHackingLevel)]
     pub(super) fn get_hacking_level_shim(this: &NS) -> JsValue;
 
