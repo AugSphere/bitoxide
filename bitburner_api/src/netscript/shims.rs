@@ -127,6 +127,9 @@ extern "C" {
     #[wasm_bindgen(method, js_name = tprint)]
     pub(super) fn tprint_shim(this: &NS, to_print: &str);
 
+    #[wasm_bindgen(method, js_name = clearLog)]
+    pub(super) fn clear_log_shim(this: &NS);
+
     #[wasm_bindgen(catch, method, variadic, js_name = tail)]
     pub(super) fn tail_shim(
         this: &NS,

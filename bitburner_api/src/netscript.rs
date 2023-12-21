@@ -494,6 +494,11 @@ impl NS {
         self.tprint_shim(to_print)
     }
 
+    /// Clears the script’s logs.
+    pub fn clear_log(self: &NS) {
+        self.clear_log_shim()
+    }
+
     /// Open the tail window of a script.
     ///
     /// **RAM cost: 0 GB**
