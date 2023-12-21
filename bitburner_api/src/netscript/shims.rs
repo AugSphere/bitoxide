@@ -158,6 +158,15 @@ extern "C" {
         hostname: Option<&str>,
         args: &JsValue,
     ) -> Option<RunningScript>;
+
+    #[wasm_bindgen(method, js_name = getHackTime)]
+    pub(super) fn get_hack_time_shim(this: &NS, host: &str) -> f64;
+
+    #[wasm_bindgen(method, js_name = getGrowTime)]
+    pub(super) fn get_grow_time_shim(this: &NS, host: &str) -> f64;
+
+    #[wasm_bindgen(method, js_name = getWeakenTime)]
+    pub(super) fn get_weaken_time_shim(this: &NS, host: &str) -> f64;
 }
 
 pub(super) fn parse_args(object: Vec<JsValue>) -> Result<Vec<Arg>, String> {

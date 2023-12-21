@@ -237,7 +237,8 @@ impl NS {
         self.weaken_shim(host, opts).await.unchecked_into_f64()
     }
 
-    /// Check arguments common to [`NS::hack`], [`NS::grow`], [`NS::weaken`] for correctness.
+    /// Check arguments common to [`NS::hack`], [`NS::grow`], [`NS::weaken`] for
+    /// correctness.
     ///
     /// **RAM cost: 0.4 GB** when [`BasicHGWOptions::threads`] is specified,
     /// **0.1** otherwise
@@ -646,5 +647,49 @@ impl NS {
         self.get_running_script_shim(&filename, hostname.as_deref(), &args_js)
     }
 
+    /// Get the execution time of a [`NS::hack`] call.
+    ///
+    /// **RAM cost: 0.05 GB**
+    ///
+    /// When `hack` completes an amount of money is stolen depending on the
+    /// player's skills. Returns the amount of time in milliseconds it takes
+    /// to execute the [`NS::hack`] Netscript function on the target server.
+    /// The required time is increased by the security level of the target
+    /// server and decreased by the player's hacking level.
+    ///
+    /// Returns the amount of time in milliseconds it takes to execute the
+    /// [`NS::hack`] Netscript function.
+    pub fn get_hack_time(self: &NS, host: &str) -> f64 {
+        self.get_hack_time_shim(host)
+    }
+
+    /// Get the execution time of a [`NS::grow`] call.
+    ///
+    /// **RAM cost: 0.05 GB**
+    ///
+    /// Returns the amount of time in milliseconds it takes to execute the
+    /// [`NS::grow`] Netscript function on the target server. The required
+    /// time is increased by the security level of the target server and
+    /// decreased by the player's hacking level.
+    ///
+    /// Returns the amount of time in milliseconds it takes to execute the
+    /// [`NS::grow`] Netscript function.
+    pub fn get_grow_time(self: &NS, host: &str) -> f64 {
+        self.get_grow_time_shim(host)
+    }
+
+    /// Get the execution time of a [`NS::weaken`] call.
+    ///
+    /// **RAM cost: 0.05 GB**
+    ///
+    /// Returns the amount of time in milliseconds it takes to execute the
+    /// [`NS::weaken`] Netscript function on the target server. The required
+    /// time is increased by the security level of the target server and
+    /// decreased by the player's hacking level.
+    ///
+    /// Returns the amount of time in milliseconds it takes to execute the
+    /// [`NS::weaken`] Netscript function.
+    pub fn get_weaken_time(self: &NS, host: &str) -> f64 {
+        self.get_weaken_time_shim(host)
     }
 }
