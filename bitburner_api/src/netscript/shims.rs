@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
-use crate::netscript::RunningScript;
+use crate::netscript::{NetscriptPort, RunningScript};
 
 /// An argument passed into a script. For use with [`NS::args`].
 #[derive(Debug, PartialEq, Clone)]
@@ -191,6 +191,9 @@ extern "C" {
 
     #[wasm_bindgen(method, js_name = serverExists)]
     pub(super) fn server_exists_shim(this: &NS, host: &str) -> bool;
+
+    #[wasm_bindgen(method, js_name = getPortHandle)]
+    pub(super) fn get_port_handle_shim(this: &NS, port_number: u32) -> NetscriptPort;
 
     #[wasm_bindgen(method, variadic, js_name = getRunningScript)]
     pub(super) fn get_running_script_shim(

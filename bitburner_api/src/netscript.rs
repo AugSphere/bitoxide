@@ -1,18 +1,26 @@
 //! Bindings for the [Netscript interface](NS).
 
+mod port;
 mod running_script;
 mod shims;
 
-/// Properties of a script, can be obtained from [NS::get_running_script].
+/// Object representing a port. A port is a serialized queue. Output of
+/// [`NS::get_port_handle`].
+///
+/// Size of the port queue is controlled by the `Netscript port size` setting in
+/// Bitburner options.
+pub use port::NetscriptPort;
+pub use port::PortData;
+/// Properties of a script, can be obtained from [`NS::get_running_script`].
 pub use running_script::RunningScript;
-/// Shape and position of the `[NS::tail]` window.
+/// Shape and position of the [`NS::tail`] window.
 pub use running_script::TailProperties;
 /// Collection of all functions passed to scripts.
 ///
 /// # Basic usage example
 /// ```rust
 /// #[wasm_bindgen]
-/// pub async fn main_rs(ns: &bitburner_api::NS) {
+/// pub async fn main_rs(ns: &NS) {
 ///     // Basic ns functions can be accessed on the ns object
 ///     ns.get_hostname();
 ///     // Some related functions are gathered under a sub-property of the ns object
@@ -684,6 +692,11 @@ impl NS {
     /// **RAM cost: 0.1 GB**
     pub fn server_exists(self: &NS, host: &str) -> bool {
         self.server_exists_shim(host)
+    }
+
+    /// Get a handle to a Netscript Port.
+    pub fn get_port_handle(self: &NS, port_number: u32) -> NetscriptPort {
+        self.get_port_handle_shim(port_number)
     }
 
     /// Get general info about a running script.
