@@ -583,6 +583,32 @@ impl NS {
         }
     }
 
+    /// Runs BruteSSH.exe on a server.
+    ///
+    /// **RAM cost: 0.05 GB**
+    ///
+    /// Runs the BruteSSH.exe program on the target server. BruteSSH.exe must
+    /// exist on your home computer.
+    pub fn brute_ssh(self: &NS, host: &str) -> Result<(), String> {
+        match self.brutessh_shim(host) {
+            Ok(()) => Ok(()),
+            Err(msg) => Err(format!("{msg:?}")),
+        }
+    }
+
+    /// Runs FTPCrack.exe on a server.
+    ///
+    /// **RAM cost: 0.05 GB**
+    ///
+    /// Runs the FTPCrack.exe program on the target server. FTPCrack.exe must
+    /// exist on your home computer.
+    pub fn ftpcrack(self: &NS, host: &str) -> Result<(), String> {
+        match self.ftpcrack_shim(host) {
+            Ok(()) => Ok(()),
+            Err(msg) => Err(format!("{msg:?}")),
+        }
+    }
+
     /// Check if you have root access on a server.
     ///
     /// **RAM cost: 0.05 GB**
