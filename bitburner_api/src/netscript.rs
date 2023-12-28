@@ -32,9 +32,8 @@ pub use running_script::TailProperties;
 /// }
 /// ```
 pub use shims::NS;
-use wasm_bindgen::JsValue;
 
-use self::shims::AsJsExt;
+use crate::extensions::AsJsExt;
 
 impl NS {
     /// Arguments passed into the script.
@@ -522,8 +521,7 @@ impl NS {
     ) -> Result<(), String> {
         let filename = filename.into();
         let hostname = hostname.map(|s| s.to_owned());
-        let args_js = js_sys::Array::from_iter(args.into_iter().map(|arg| JsValue::from(arg)));
-        self.tail_shim(&filename, hostname.as_deref(), &args_js)
+        self.tail_shim(&filename, hostname.as_deref(), &args.as_js())
             .map_err(|msg| format!("{msg:?}"))
     }
 
@@ -771,8 +769,7 @@ impl NS {
     ) -> Option<RunningScript> {
         let filename = filename.into();
         let hostname = hostname.map(|s| s.to_owned());
-        let args_js = js_sys::Array::from_iter(args.into_iter().map(|arg| JsValue::from(arg)));
-        self.get_running_script_shim(&filename, hostname.as_deref(), &args_js)
+        self.get_running_script_shim(&filename, hostname.as_deref(), &args.as_js())
     }
 
     /// Get the execution time of a [`NS::hack`] call.

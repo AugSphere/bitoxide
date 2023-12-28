@@ -35,3 +35,5 @@ pub use wasm_bindgen::JsValue;
 
 pub mod netscript;
 pub use netscript::NS;
+
+mod extensions;
