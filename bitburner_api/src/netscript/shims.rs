@@ -1,42 +1,7 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
-use crate::netscript::{NetscriptPort, RunningScript};
-
-/// An argument passed into a script. For use with [`NS::args`].
-#[derive(Debug, PartialEq, Clone)]
-pub enum Arg {
-    Bool(bool),
-    F64(f64),
-    String(String),
-}
-
-impl From<Arg> for JsValue {
-    fn from(value: Arg) -> Self {
-        match value {
-            Arg::Bool(flag) => JsValue::from_bool(flag),
-            Arg::F64(n) => JsValue::from_f64(n),
-            Arg::String(s) => JsValue::from_str(&s),
-        }
-    }
-}
-
-impl TryFrom<JsValue> for Arg {
-    type Error = String;
-
-    fn try_from(value: JsValue) -> Result<Self, Self::Error> {
-        if let Some(bool) = value.as_bool() {
-            return Ok(Arg::Bool(bool));
-        };
-        if let Some(float) = value.as_f64() {
-            return Ok(Arg::F64(float));
-        };
-        if let Some(string) = value.as_string() {
-            return Ok(Arg::String(string));
-        };
-        Err(format!("Unexpected argument type of value: {value:?}"))
-    }
-}
+use crate::netscript::{Arg, BasicHGWOptions, NetscriptPort, RunningScript};
 
 pub trait AsJsExt<O>
 where
@@ -52,71 +17,6 @@ where
     fn as_js(self) -> js_sys::Array {
         js_sys::Array::from_iter(self.into_iter().map(|arg| arg.into()))
     }
-}
-
-/// Options to affect the behavior of [`NS::hack`], [`NS::grow`], and
-/// [`NS::weaken`].
-#[allow(non_snake_case)]
-#[derive(Debug, Default, PartialEq, Clone, Copy)]
-#[wasm_bindgen]
-pub struct BasicHGWOptions {
-    /// Number of threads to use for this function.
-    /// Must be less than or equal to the number of threads the script is
-    /// running with.
-    pub threads: Option<u32>,
-    /// Set to true this action will affect the stock market.
-    pub stock: Option<bool>,
-    /// Number of additional milliseconds that will be spent waiting between the
-    /// start of the function and when it completes.
-    pub additionalMsec: Option<f64>,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum ThreadOrOptions {
-    Threads(u32),
-    Options(RunOptions),
-}
-
-impl From<ThreadOrOptions> for JsValue {
-    fn from(value: ThreadOrOptions) -> Self {
-        match value {
-            ThreadOrOptions::Threads(threads) => threads.into(),
-            ThreadOrOptions::Options(options) => options.into(),
-        }
-    }
-}
-
-#[allow(non_snake_case)]
-#[derive(Debug, Default, PartialEq, Clone, Copy)]
-#[wasm_bindgen]
-pub struct RunOptions {
-    /// Number of threads that the script will run with, defaults to 1.
-    pub threads: Option<u32>,
-
-    /// Whether this script is excluded from saves, defaults to false.
-    pub temporary: Option<bool>,
-
-    /// The RAM allocation to launch each thread of the script with.
-    ///
-    /// Lowering this will *not* automatically let you get away with
-    /// using less RAM: the dynamic RAM check enforces that all [`NS`]
-    /// functions actually called incur their cost. However, if you
-    /// know that certain functions that are statically present (and thus
-    /// included in the static RAM cost) will never be called in a
-    /// particular circumstance, you can use this to avoid paying for
-    /// them.
-    ///
-    /// You can also use this to *increase* the RAM if the static RAM
-    /// checker has missed functions that you need to call.
-    ///
-    /// Must be greater-or-equal to the base RAM cost. Defaults to the
-    /// statically calculated cost.
-    pub ramOverride: Option<f64>,
-
-    /// Should we fail to run if another instance is running with the exact
-    /// same arguments? This used to be the default behavior, now
-    /// defaults to false.
-    pub preventDuplicates: Option<bool>,
 }
 
 #[wasm_bindgen]

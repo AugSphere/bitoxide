@@ -1,19 +1,21 @@
 //! Bindings for the [Netscript interface](NS).
 
+mod arg_types;
 mod port;
 mod running_script;
 mod shims;
 
+pub use arg_types::{Arg, BasicHGWOptions, FilenameOrPID, PortData, RunOptions, ThreadOrOptions};
 /// Object representing a port. A port is a serialized queue. Output of
-/// [`NS::get_port_handle`].
+/// [`get_port_handle`](NS::get_port_handle).
 ///
 /// Size of the port queue is controlled by the `Netscript port size` setting in
 /// Bitburner options.
 pub use port::NetscriptPort;
-pub use port::PortData;
-/// Properties of a script, can be obtained from [`NS::get_running_script`].
+/// Properties of a script, can be obtained from
+/// [`get_running_script`](NS::get_running_script).
 pub use running_script::RunningScript;
-/// Shape and position of the [`NS::tail`] window.
+/// Shape and position of a [`tail`](NS::tail) window.
 pub use running_script::TailProperties;
 /// Collection of all functions passed to scripts.
 ///
@@ -30,27 +32,9 @@ pub use running_script::TailProperties;
 /// }
 /// ```
 pub use shims::NS;
-pub use shims::{Arg, BasicHGWOptions, RunOptions, ThreadOrOptions};
 use wasm_bindgen::JsValue;
 
 use self::shims::AsJsExt;
-
-/// Type for identifying scripts by either id or filename in
-/// [`NS::get_running_script`]
-#[derive(Debug, PartialEq, Clone)]
-pub enum FilenameOrPID {
-    Pid(u32),
-    Name(String),
-}
-
-impl From<FilenameOrPID> for JsValue {
-    fn from(value: FilenameOrPID) -> Self {
-        match value {
-            FilenameOrPID::Pid(pid) => JsValue::from_f64(pid.into()),
-            FilenameOrPID::Name(string) => JsValue::from_str(&string),
-        }
-    }
-}
 
 impl NS {
     /// Arguments passed into the script.
@@ -132,7 +116,7 @@ impl NS {
     /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
     /// example if more threads are requested than are available. See
     /// [bitburner_api
-    /// docs](crate#all-async-functions-can-hang-bitburner-scripts)
+    /// docs](crate#all-async-functions-can-hang-bitburner-scripts).
     pub async unsafe fn hack_unchecked(
         self: &NS,
         host: &str,
@@ -199,7 +183,7 @@ impl NS {
     /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
     /// example if more threads are requested than are available. See
     /// [bitburner_api
-    /// docs](crate#all-async-functions-can-hang-bitburner-scripts)
+    /// docs](crate#all-async-functions-can-hang-bitburner-scripts).
     pub async unsafe fn grow_unchecked(
         self: &NS,
         host: &str,
@@ -247,7 +231,7 @@ impl NS {
     /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
     /// example if more threads are requested than are available. See
     /// [bitburner_api
-    /// docs](crate#all-async-functions-can-hang-bitburner-scripts)
+    /// docs](crate#all-async-functions-can-hang-bitburner-scripts).
     pub async unsafe fn weaken_unchecked(
         self: &NS,
         host: &str,

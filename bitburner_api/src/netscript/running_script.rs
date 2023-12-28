@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
-use super::Arg;
+use crate::netscript::Arg;
 
 impl RunningScript {
     /// Arguments the script was called with.
