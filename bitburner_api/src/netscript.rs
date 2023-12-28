@@ -30,8 +30,10 @@ pub use running_script::TailProperties;
 /// }
 /// ```
 pub use shims::NS;
-pub use shims::{Arg, BasicHGWOptions};
+pub use shims::{Arg, BasicHGWOptions, RunOptions, ThreadOrOptions};
 use wasm_bindgen::JsValue;
+
+use self::shims::AsJsExt;
 
 /// Type for identifying scripts by either id or filename in
 /// [`NS::get_running_script`]
@@ -607,6 +609,35 @@ impl NS {
             Ok(()) => Ok(()),
             Err(msg) => Err(format!("{msg:?}")),
         }
+    }
+
+    /// Start another script on the current server.
+    ///
+    /// **RAM cost: 1 GB**
+    ///
+    /// Run a script as a separate process. This function can only be used to
+    /// run scripts located on the current server (the server running the
+    /// script that calls this function). Requires a significant
+    /// amount of RAM to run this command.
+    ///
+    /// The second argument is either a thread count, or a [`RunOptions`] object
+    /// that can specify the number of threads (among other things).
+    ///
+    /// If the script was successfully started, then this functions returns the
+    /// PID of that script. Otherwise, it returns 0.
+    ///
+    /// PID stands for Process ID. The PID is a unique identifier for each
+    /// script. The PID will always be a positive integer.
+    ///
+    /// Running this function with 0 or fewer threads will cause a runtime
+    /// error.
+    pub fn run(
+        self: &NS,
+        script: &str,
+        thread_or_options: Option<ThreadOrOptions>,
+        args: Vec<Arg>,
+    ) -> u32 {
+        self.run_shim(script, &thread_or_options.into(), &args.as_js())
     }
 
     /// Check if you have root access on a server.

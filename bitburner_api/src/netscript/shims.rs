@@ -38,10 +38,26 @@ impl TryFrom<JsValue> for Arg {
     }
 }
 
+pub trait AsJsExt<O>
+where
+    O: Into<JsValue>,
+{
+    fn as_js(self) -> O;
+}
+
+impl<T> AsJsExt<js_sys::Array> for Vec<T>
+where
+    T: Into<JsValue>,
+{
+    fn as_js(self) -> js_sys::Array {
+        js_sys::Array::from_iter(self.into_iter().map(|arg| arg.into()))
+    }
+}
+
 /// Options to affect the behavior of [`NS::hack`], [`NS::grow`], and
 /// [`NS::weaken`].
 #[allow(non_snake_case)]
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, PartialEq, Clone, Copy)]
 #[wasm_bindgen]
 pub struct BasicHGWOptions {
     /// Number of threads to use for this function.
@@ -53,6 +69,54 @@ pub struct BasicHGWOptions {
     /// Number of additional milliseconds that will be spent waiting between the
     /// start of the function and when it completes.
     pub additionalMsec: Option<f64>,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum ThreadOrOptions {
+    Threads(u32),
+    Options(RunOptions),
+}
+
+impl From<ThreadOrOptions> for JsValue {
+    fn from(value: ThreadOrOptions) -> Self {
+        match value {
+            ThreadOrOptions::Threads(threads) => threads.into(),
+            ThreadOrOptions::Options(options) => options.into(),
+        }
+    }
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Default, PartialEq, Clone, Copy)]
+#[wasm_bindgen]
+pub struct RunOptions {
+    /// Number of threads that the script will run with, defaults to 1.
+    pub threads: Option<u32>,
+
+    /// Whether this script is excluded from saves, defaults to false.
+    pub temporary: Option<bool>,
+
+    /// The RAM allocation to launch each thread of the script with.
+    ///
+    /// Lowering this will *not* automatically let you get away with
+    /// using less RAM: the dynamic RAM check enforces that all [`NS`]
+    /// functions actually called incur their cost. However, if you
+    /// know that certain functions that are statically present (and thus
+    /// included in the static RAM cost) will never be called in a
+    /// particular circumstance, you can use this to avoid paying for
+    /// them.
+    ///
+    /// You can also use this to *increase* the RAM if the static RAM
+    /// checker has missed functions that you need to call.
+    ///
+    /// Must be greater-or-equal to the base RAM cost. Defaults to the
+    /// statically calculated cost.
+    pub ramOverride: Option<f64>,
+
+    /// Should we fail to run if another instance is running with the exact
+    /// same arguments? This used to be the default behavior, now
+    /// defaults to false.
+    pub preventDuplicates: Option<bool>,
 }
 
 #[wasm_bindgen]
@@ -158,6 +222,14 @@ extern "C" {
 
     #[wasm_bindgen(catch, method, js_name = sqlinject)]
     pub(super) fn sqlinject_shim(this: &NS, host: &str) -> Result<(), JsValue>;
+
+    #[wasm_bindgen(method, variadic, js_name = run)]
+    pub(super) fn run_shim(
+        this: &NS,
+        script: &str,
+        thread_or_options: &JsValue,
+        args: &JsValue,
+    ) -> u32;
 
     #[wasm_bindgen(method, js_name = hasRootAccess)]
     pub(super) fn has_root_access_shim(this: &NS, host: &str) -> bool;
