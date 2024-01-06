@@ -1,10 +1,10 @@
 use wasm_bindgen::JsValue;
 
-pub trait AsJsExt<O>
+pub trait AsJsExt<Output>
 where
-    O: Into<JsValue>,
+    Output: Into<JsValue>,
 {
-    fn as_js(self) -> O;
+    fn as_js(self) -> Output;
 }
 
 impl<T> AsJsExt<js_sys::Array> for Vec<T>
