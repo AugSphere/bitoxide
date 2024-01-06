@@ -151,6 +151,14 @@ extern "C" {
     #[wasm_bindgen(method, js_name = getPortHandle)]
     pub(super) fn get_port_handle_shim(this: &NS, port_number: u32) -> NetscriptPort;
 
+    #[wasm_bindgen(method, variadic, js_name = isRunning)]
+    pub(super) fn is_running_shim(
+        this: &NS,
+        script: &JsValue,
+        host: Option<&str>,
+        args: &JsValue,
+    ) -> bool;
+
     #[wasm_bindgen(method, variadic, js_name = getRunningScript)]
     pub(super) fn get_running_script_shim(
         this: &NS,

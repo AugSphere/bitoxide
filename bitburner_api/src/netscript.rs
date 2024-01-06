@@ -738,6 +738,35 @@ impl NS {
         self.get_port_handle_shim(port_number)
     }
 
+    /// Check if a script is running.
+    ///
+    /// **RAM cost: 0.1 GB**
+    ///
+    /// Returns a boolean indicating whether the specified script is running on
+    /// the target server. If you use a PID instead of a filename, the
+    /// hostname and args parameters are unnecessary. If hostname is omitted
+    /// while filename is used as the first parameter, hostname defaults to the
+    /// server the calling script is running on. Remember that a script is
+    /// semi-uniquely identified by both its name and its arguments.
+    /// (You can run multiple copies of scripts with the same arguments, but for
+    /// the purposes of functions like this that check based on filename,
+    /// the filename plus arguments forms the key.)
+    ///
+    /// # Arguments
+    /// * script - Filename or PID of script to check. This is case-sensitive.
+    /// * host - Hostname of target server. Optional, defaults to the server the
+    ///   calling script is running on.
+    /// * args - Arguments to specify/identify the script. Optional, when
+    ///   looking for scripts run without arguments.
+    pub fn is_running(
+        self: &NS,
+        script: FilenameOrPID,
+        host: Option<&str>,
+        args: Vec<Arg>,
+    ) -> bool {
+        self.is_running_shim(&script.into(), host, &args.as_js())
+    }
+
     /// Get general info about a running script.
     ///
     /// **RAM cost: 0.3 GB**
