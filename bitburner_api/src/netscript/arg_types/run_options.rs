@@ -9,6 +9,18 @@ pub enum ThreadOrOptions {
     Options(RunOptions),
 }
 
+impl From<u32> for ThreadOrOptions {
+    fn from(value: u32) -> Self {
+        ThreadOrOptions::Threads(value)
+    }
+}
+
+impl From<RunOptions> for ThreadOrOptions {
+    fn from(value: RunOptions) -> Self {
+        ThreadOrOptions::Options(value)
+    }
+}
+
 #[allow(non_snake_case)]
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
 #[wasm_bindgen]
