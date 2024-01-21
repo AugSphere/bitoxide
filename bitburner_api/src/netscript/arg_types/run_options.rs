@@ -9,6 +9,20 @@ pub enum ThreadOrOptions {
     Options(RunOptions),
 }
 
+impl ThreadOrOptions {
+    /// Return the thread count, defaults to 1.
+    pub fn threads(maybe_thread_or_options: &Option<ThreadOrOptions>) -> u32 {
+        match maybe_thread_or_options {
+            Some(ThreadOrOptions::Threads(threads)) => *threads,
+            Some(ThreadOrOptions::Options(RunOptions {
+                threads: Some(threads),
+                ..
+            })) => *threads,
+            _ => 1,
+        }
+    }
+}
+
 impl From<u32> for ThreadOrOptions {
     fn from(value: u32) -> Self {
         ThreadOrOptions::Threads(value)
