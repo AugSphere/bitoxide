@@ -57,8 +57,8 @@ impl NS {
     }
 
     /// The current script's PID.
-    pub fn pid(self: &NS) -> f64 {
-        self.pid_shim()
+    pub fn pid(self: &NS) -> u32 {
+        self.pid_shim() as u32
     }
 
     /// Steal a server's money.
@@ -620,6 +620,17 @@ impl NS {
         args: Vec<Arg>,
     ) -> u32 {
         self.run_shim(script, &thread_or_options.into(), &args.as_js())
+    }
+
+    /// Terminate the script with the provided PID.
+    /// **RAM cost: 0.5 GB**
+    ///
+    /// Kills the script with the provided PID.
+    ///
+    /// Returns [`true`] if the script is successfully killed, and [`false`]
+    /// otherwise.
+    pub fn kill(self: &NS, pid: u32) -> bool {
+        self.kill_shim(pid)
     }
 
     /// Check if you have root access on a server.

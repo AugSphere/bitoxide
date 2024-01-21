@@ -115,6 +115,9 @@ extern "C" {
         args: &JsValue,
     ) -> u32;
 
+    #[wasm_bindgen(method, js_name = kill)]
+    pub(super) fn kill_shim(this: &NS, pid: u32) -> bool;
+
     #[wasm_bindgen(method, js_name = hasRootAccess)]
     pub(super) fn has_root_access_shim(this: &NS, host: &str) -> bool;
 
