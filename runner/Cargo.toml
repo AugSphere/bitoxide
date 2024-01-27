@@ -1,0 +1,11 @@
+[package]
+name = "runner"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+script_lib = {path = "../script_lib"}
+bitburner_api = {path = "../bitburner_api"}

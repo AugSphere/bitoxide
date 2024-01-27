@@ -9,4 +9,5 @@ members = [
     "bitburner_api",
     "xtask",
     "hello",
+    "runner",
 ]
