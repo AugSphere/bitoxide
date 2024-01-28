@@ -10,7 +10,6 @@ pub use weaken_all::weaken_all;
 
 mod run;
 pub use run::*;
-pub use web_sys;
 
 const RETRY_WAIT: f64 = 25.0;
 

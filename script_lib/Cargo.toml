@@ -7,9 +7,7 @@ edition = "2021"
 crate-type = ["lib"]
 
 [dependencies]
-async-std = "1.12.0"
 cooked-waker = "5.0"
-web-sys = { version = "0.3", features = ["Performance", "Window"] }
 bitburner_api = {path = "../bitburner_api"}
 
 [dev-dependencies]

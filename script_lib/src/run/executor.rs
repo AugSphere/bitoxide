@@ -52,7 +52,7 @@ where
                 }
             }
             self.reactor.wake_running();
-            self.reactor.wake_waiting();
+            self.reactor.wake_on_ram_release();
 
             self.poll()?;
             if self.reactor.is_empty() {
@@ -77,7 +77,7 @@ where
                     return e;
                 }
                 Poll::Ready(Ok(_)) => {
-                    self.reactor.wake_waiting();
+                    self.reactor.wake_on_ram_release();
                 }
                 Poll::Pending => {}
             };

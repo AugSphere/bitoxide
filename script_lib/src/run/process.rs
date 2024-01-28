@@ -107,10 +107,12 @@ impl<'a, F: Future<Output = ()>> BitburnerProcess<'a, F> {
             (None, _) => WakeDelay::AfterNextRamRelease,
             (Some(start_instant), last_polled) => {
                 let expected_finish = start_instant + self.duration_hint;
-                if last_polled.is_some_and(|lp| lp > expected_finish) {
-                    WakeDelay::Immediate
-                } else {
-                    WakeDelay::WakeAt(expected_finish)
+                let now = self.executor.now();
+                match last_polled {
+                    Some(last_polled) if last_polled > expected_finish => WakeDelay::Retry,
+                    Some(_) => WakeDelay::WakeAt(expected_finish),
+                    None if now >= expected_finish => WakeDelay::Immediate,
+                    None => WakeDelay::WakeAt(expected_finish),
                 }
             }
         };
