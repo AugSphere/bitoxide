@@ -6,7 +6,7 @@ use crate::{F64Total, RETRY_WAIT};
 
 type WakersByTime = BTreeMap<F64Total, Vec<Waker>>;
 type WakersInOrder = Vec<Waker>;
-pub type WakersWithTime = (WakeDelay, Waker);
+pub type WakerWithTime = (WakeDelay, Waker);
 
 #[derive(Debug, Clone, Copy)]
 pub enum WakeDelay {
@@ -17,8 +17,8 @@ pub enum WakeDelay {
 }
 
 pub struct BitburnerReactor {
-    pub reactor_tx: Sender<WakersWithTime>,
-    reactor_rx: Receiver<WakersWithTime>,
+    reactor_tx: Sender<WakerWithTime>,
+    reactor_rx: Receiver<WakerWithTime>,
     wakers_running: WakersByTime,
     wakers_ram: WakersInOrder,
     instant_fn: fn() -> f64,
@@ -26,7 +26,7 @@ pub struct BitburnerReactor {
 
 impl BitburnerReactor {
     pub fn new(instant_fn: fn() -> f64) -> Self {
-        let (reactor_tx, reactor_rx) = channel::<WakersWithTime>();
+        let (reactor_tx, reactor_rx) = channel::<WakerWithTime>();
         BitburnerReactor {
             reactor_tx,
             reactor_rx,
@@ -34,6 +34,10 @@ impl BitburnerReactor {
             wakers_ram: WakersInOrder::new(),
             instant_fn,
         }
+    }
+
+    pub fn get_schedule_queue(&self) -> Sender<WakerWithTime> {
+        self.reactor_tx.clone()
     }
 
     pub fn now(&self) -> f64 {
@@ -50,7 +54,7 @@ impl BitburnerReactor {
 
     pub fn is_empty(&mut self) -> bool {
         self.drain_queue();
-        self.wakers_ram.is_empty() & self.wakers_running.is_empty()
+        self.wakers_ram.is_empty() && self.wakers_running.is_empty()
     }
 
     fn drain_queue(&mut self) {

@@ -1,13 +1,35 @@
-use bitburner_api::{wasm_bindgen, wasm_bindgen_futures, NS};
+use std::{sync::Arc, time::Duration};
 
-use script_lib::web_sys;
+use bitburner_api::{wasm_bindgen, wasm_bindgen_futures, NS};
+use gloo_timers::future::sleep;
+use script_lib::*;
 
 #[wasm_bindgen]
-pub fn main_rs(ns: &NS) {
-    let window = web_sys::window().expect("should have a window in this context");
-    let performance = window
-        .performance()
-        .expect("performance should be available");
-    let now = performance.now();
-    ns.tprint(&format!("{now:?}"))
+pub async fn main_rs(ns: NS) {
+    let ns = Arc::new(ns);
+    let now = || {
+        let window = web_sys::window().expect("should have a window in this context");
+        let performance = window
+            .performance()
+            .expect("performance should be available");
+        performance.now()
+    };
+
+    let sleep_millis = |millis: f64| async move {
+        sleep(Duration::from_millis(millis as u64)).await;
+    };
+
+    let mut executor = BitburnerExecutor::new(15.0, now, sleep_millis);
+    let executor_data = ExecutorData::new(
+        now,
+        executor.get_ram_change_queue(),
+        executor.get_schedule_queue(),
+    );
+    let weaken = Box::pin(weaken_process(ns.clone(), "home", None, executor_data));
+    executor.register(weaken);
+    let _ = ns.tail(None, None, vec![]);
+    match executor.run().await {
+        Ok(()) => {}
+        Err(msg) => ns.tprint(&msg),
+    }
 }

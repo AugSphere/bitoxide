@@ -1,37 +1,49 @@
-use std::cell::Cell;
 use std::future::Future;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
-use std::task::{Context, Poll, Waker};
+use std::task::{Context, Poll};
 
-use super::reactor::{BitburnerReactor, WakeDelay};
+use super::reactor::{BitburnerReactor, WakeDelay, WakerWithTime};
 use super::waker::{PinnedFuture, SimpleWaker, Task};
 
 pub type TaskResult = Result<(), String>;
+pub trait SleepFuture: Future<Output = ()> {}
+impl<T: Future<Output = ()>> SleepFuture for T {}
+
+#[derive(Debug, Clone, Copy)]
+pub enum RamChange {
+    Use(f64),
+    Release(f64),
+}
 
 /// Executes tasks as RAM becomes available.
-pub struct ConstrainedPriorityExecutor<F>
+pub struct BitburnerExecutor<F>
 where
-    F: Future<Output = ()>,
+    F: SleepFuture,
 {
-    pub available_ram: Cell<f64>,
-    pub woken_tx: Sender<Arc<Task>>,
+    available_ram: f64,
+    woken_tx: Sender<Arc<Task>>,
     woken_rx: Receiver<Arc<Task>>,
+    ram_tx: Sender<RamChange>,
+    ram_rx: Receiver<RamChange>,
     reactor: BitburnerReactor,
     sleep_fn: fn(f64) -> F,
 }
 
-impl<F> ConstrainedPriorityExecutor<F>
+impl<F> BitburnerExecutor<F>
 where
-    F: Future<Output = ()>,
+    F: SleepFuture,
 {
     pub fn new(max_ram: f64, instant_fn: fn() -> f64, sleep_fn: fn(f64) -> F) -> Self {
         let (woken_tx, woken_rx) = channel::<Arc<Task>>();
+        let (ram_tx, ram_rx) = channel::<RamChange>();
         let reactor = BitburnerReactor::new(instant_fn);
-        ConstrainedPriorityExecutor {
-            available_ram: max_ram.into(),
+        BitburnerExecutor {
+            available_ram: max_ram,
             woken_tx,
             woken_rx,
+            ram_tx,
+            ram_rx,
             reactor,
             sleep_fn,
         }
@@ -40,7 +52,9 @@ where
     pub fn register(&self, future: PinnedFuture) {
         let task: Task = Mutex::new(future);
         let waker = SimpleWaker::waker(Arc::new(task), self.woken_tx.clone());
-        self.schedule_wake(WakeDelay::Immediate, waker);
+        self.get_schedule_queue()
+            .send((WakeDelay::Immediate, waker))
+            .expect("Reactor closed the queue");
     }
 
     pub async fn run(&mut self) -> TaskResult {
@@ -72,7 +86,9 @@ where
             let mut future = woken
                 .try_lock()
                 .expect("Could not borrow the future from the task");
-            match future.as_mut().poll(&mut cx) {
+            let poll = future.as_mut().poll(&mut cx);
+            Self::track_ram_use(&mut self.ram_rx, &mut self.available_ram);
+            match poll {
                 Poll::Ready(e @ Err(_)) => {
                     return e;
                 }
@@ -89,24 +105,21 @@ where
         self.reactor.now()
     }
 
-    pub fn schedule_wake(&self, wake_delay: WakeDelay, waker: Waker) {
-        self.reactor
-            .reactor_tx
-            .send((wake_delay, waker))
-            .expect("Reactor closed the queue");
+    pub fn get_ram_change_queue(&self) -> Sender<RamChange> {
+        self.ram_tx.clone()
     }
 
-    pub fn use_ram(&self, ram: f64) {
-        let available_ram = self.available_ram.get();
-        self.available_ram.set(available_ram - ram);
+    pub fn get_schedule_queue(&self) -> Sender<WakerWithTime> {
+        self.reactor.get_schedule_queue()
     }
 
-    pub fn free_ram(&self, ram: f64) {
-        let available_ram = self.available_ram.get();
-        self.available_ram.set(available_ram + ram);
-    }
-
-    pub fn can_launch(&self, ram: f64) -> bool {
-        self.available_ram.get() >= ram
+    fn track_ram_use(ram_rx: &mut Receiver<RamChange>, available_ram: &mut f64) {
+        for change in ram_rx.try_iter() {
+            match change {
+                RamChange::Release(ram) => *available_ram += ram,
+                RamChange::Use(ram) => *available_ram -= ram,
+            }
+            assert!(available_ram >= &mut 0.0);
+        }
     }
 }

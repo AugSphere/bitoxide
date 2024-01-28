@@ -8,15 +8,19 @@ use cooked_waker::{IntoWaker, WakeRef};
 
 use super::executor::TaskResult;
 
-pub type PinnedFuture = Pin<Box<dyn Future<Output = TaskResult> + Send>>;
+pub type PinnedFuture = Pin<Box<dyn Future<Output = TaskResult>>>;
 pub type Task = Mutex<PinnedFuture>;
 pub type ArcTask = Arc<Task>;
 
 #[derive(Clone)]
 pub struct SimpleWaker {
-    pub task: ArcTask,
+    task: ArcTask,
     woken_tx: Sender<ArcTask>,
 }
+
+// A lie, but we are in a browser, so only 1 thread
+unsafe impl Send for SimpleWaker {}
+unsafe impl Sync for SimpleWaker {}
 
 impl SimpleWaker {
     pub fn new(task: ArcTask, woken_tx: Sender<ArcTask>) -> Self {
