@@ -1,10 +1,9 @@
 use std::future::Future;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::task::{Context, Poll};
 
 use super::reactor::{BitburnerReactor, WakeDelay, WakerWithTime};
-use super::waker::{PinnedFuture, SimpleWaker, Task};
+use super::waker::{PinnedFuture, RcTask, SimpleWaker, Task};
 
 pub type TaskResult = Result<(), String>;
 pub trait SleepFuture: Future<Output = ()> {}
@@ -22,8 +21,8 @@ where
     F: SleepFuture,
 {
     available_ram: f64,
-    woken_tx: Sender<Arc<Task>>,
-    woken_rx: Receiver<Arc<Task>>,
+    woken_tx: Sender<RcTask>,
+    woken_rx: Receiver<RcTask>,
     ram_tx: Sender<RamChange>,
     ram_rx: Receiver<RamChange>,
     reactor: BitburnerReactor,
@@ -35,8 +34,8 @@ where
     F: SleepFuture,
 {
     pub fn new(max_ram: f64, instant_fn: fn() -> f64, sleep_fn: fn(f64) -> F) -> Self {
-        let (woken_tx, woken_rx) = channel::<Arc<Task>>();
-        let (ram_tx, ram_rx) = channel::<RamChange>();
+        let (woken_tx, woken_rx) = mpsc::channel::<RcTask>();
+        let (ram_tx, ram_rx) = mpsc::channel::<RamChange>();
         let reactor = BitburnerReactor::new(instant_fn);
         BitburnerExecutor {
             available_ram: max_ram,
@@ -50,8 +49,8 @@ where
     }
 
     pub fn register(&self, future: PinnedFuture) {
-        let task: Task = Mutex::new(future);
-        let waker = SimpleWaker::waker(Arc::new(task), self.woken_tx.clone());
+        let task: Task = Task::new(future);
+        let waker = SimpleWaker::waker(RcTask::new(task), self.woken_tx.clone());
         self.get_schedule_queue()
             .send((WakeDelay::Immediate, waker))
             .expect("Reactor closed the queue");
@@ -84,7 +83,7 @@ where
             let waker = SimpleWaker::waker(woken.clone(), self.woken_tx.clone());
             let mut cx = Context::from_waker(&waker);
             let mut future = woken
-                .try_lock()
+                .try_borrow_mut()
                 .expect("Could not borrow the future from the task");
             let poll = future.as_mut().poll(&mut cx);
             Self::track_ram_use(&mut self.ram_rx, &mut self.available_ram);

@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::task::Waker;
 
 use crate::{F64Total, RETRY_WAIT};
@@ -26,7 +26,7 @@ pub struct BitburnerReactor {
 
 impl BitburnerReactor {
     pub fn new(instant_fn: fn() -> f64) -> Self {
-        let (reactor_tx, reactor_rx) = channel::<WakerWithTime>();
+        let (reactor_tx, reactor_rx) = mpsc::channel::<WakerWithTime>();
         BitburnerReactor {
             reactor_tx,
             reactor_rx,
@@ -128,11 +128,11 @@ impl BitburnerReactor {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::mpsc::channel;
+    use std::sync::mpsc;
     use std::task::Waker;
 
     use super::{BitburnerReactor, WakeDelay, WakersByTime, WakersInOrder};
-    use crate::run::waker::{get_task_with_waker, ArcTask};
+    use crate::run::waker::{get_task_with_waker, RcTask};
     use crate::{F64Total, RETRY_WAIT};
 
     #[test]
@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn test_drain_queue() {
         let mut reactor = BitburnerReactor::new(|| 0.0);
-        let (woken_tx, _) = channel::<ArcTask>();
+        let (woken_tx, _) = mpsc::channel::<RcTask>();
         let (_, waker_1) = get_task_with_waker(std::future::ready(Ok(())), woken_tx.clone());
 
         reactor.drain_queue();
@@ -198,7 +198,7 @@ mod tests {
         let now = 0.0;
         let mut wakers_running = WakersByTime::new();
         let mut wakers_ram = WakersInOrder::new();
-        let (woken_tx, _woken_rx) = channel::<ArcTask>();
+        let (woken_tx, _woken_rx) = mpsc::channel::<RcTask>();
 
         let delay_fn = |idx: usize| -> WakeDelay {
             match idx {
