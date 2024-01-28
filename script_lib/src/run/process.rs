@@ -1,6 +1,5 @@
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::task::{Poll, Waker};
 
@@ -9,6 +8,7 @@ use bitburner_api::NS;
 
 use super::executor::{RamChange, TaskResult};
 use super::reactor::{WakeDelay, WakerWithTime};
+use crate::simple_channel::Sender;
 
 pub struct BitburnerProcess {
     ns: Arc<NS>,

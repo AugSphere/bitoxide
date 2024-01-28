@@ -5,11 +5,13 @@ use bitburner_api::NS;
 mod f64_total;
 pub use f64_total::*;
 
-mod weaken_all;
-pub use weaken_all::weaken_all;
+pub(crate) mod simple_channel;
 
 mod run;
 pub use run::*;
+
+mod weaken_all;
+pub use weaken_all::weaken_all;
 
 const RETRY_WAIT: f64 = 25.0;
 

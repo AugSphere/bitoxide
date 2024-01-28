@@ -3,7 +3,6 @@ use std::future::Future;
 use std::panic::panic_any;
 use std::pin::Pin;
 use std::rc::Rc;
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::task::Waker;
 use std::thread::{self, ThreadId};
@@ -11,6 +10,7 @@ use std::thread::{self, ThreadId};
 use cooked_waker::{IntoWaker, WakeRef};
 
 use super::executor::TaskResult;
+use crate::simple_channel::Sender;
 
 pub type PinnedFuture = Pin<Box<dyn Future<Output = TaskResult>>>;
 pub type Task = RefCell<PinnedFuture>;
@@ -67,15 +67,15 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::sync::mpsc;
     use std::task::Waker;
     use std::thread;
 
     use super::{get_task_with_waker, RcTask, SEND_PANIC};
+    use crate::simple_channel;
 
     #[test]
     fn test_wake() {
-        let (woken_tx, woken_rx) = mpsc::channel::<RcTask>();
+        let (woken_tx, woken_rx) = simple_channel::channel::<RcTask>();
         let future = std::future::ready(Ok(()));
         let (arc_task, waker) = get_task_with_waker(future, woken_tx);
         let waker_ref: &Waker = &waker;
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_send_panic() {
-        let (woken_tx, _woken_rx) = mpsc::channel::<RcTask>();
+        let (woken_tx, _woken_rx) = simple_channel::channel::<RcTask>();
         let future = std::future::ready(Ok(()));
         let (_, waker) = get_task_with_waker(future, woken_tx);
 

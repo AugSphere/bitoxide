@@ -1,9 +1,9 @@
 use std::future::Future;
-use std::sync::mpsc::{self, Receiver, Sender};
 use std::task::{Context, Poll};
 
 use super::reactor::{BitburnerReactor, WakeDelay, WakerWithTime};
 use super::waker::{PinnedFuture, RcTask, SimpleWaker, Task};
+use crate::simple_channel::{self, Receiver, Sender};
 
 pub type TaskResult = Result<(), String>;
 pub trait SleepFuture: Future<Output = ()> {}
@@ -34,8 +34,8 @@ where
     F: SleepFuture,
 {
     pub fn new(max_ram: f64, instant_fn: fn() -> f64, sleep_fn: fn(f64) -> F) -> Self {
-        let (woken_tx, woken_rx) = mpsc::channel::<RcTask>();
-        let (ram_tx, ram_rx) = mpsc::channel::<RamChange>();
+        let (woken_tx, woken_rx) = simple_channel::channel::<RcTask>();
+        let (ram_tx, ram_rx) = simple_channel::channel::<RamChange>();
         let reactor = BitburnerReactor::new(instant_fn);
         BitburnerExecutor {
             available_ram: max_ram,
