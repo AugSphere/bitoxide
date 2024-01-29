@@ -13,8 +13,6 @@ pub use run::*;
 mod weaken_all;
 pub use weaken_all::weaken_all;
 
-const RETRY_WAIT: f64 = 25.0;
-
 pub fn try_root(ns: &NS, host: &str) -> bool {
     let hack_level = ns.get_hacking_level();
     if hack_level < ns.get_server_required_hacking_level(host) {

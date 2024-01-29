@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 use std::task::Waker;
 
 use crate::simple_channel::{self, Receiver, Sender};
-use crate::{F64Total, RETRY_WAIT};
+use crate::F64Total;
+
+const RETRY_WAIT: f64 = 25.0;
 
 type WakersByTime = BTreeMap<F64Total, Vec<Waker>>;
 type WakersInOrder = Vec<Waker>;
@@ -55,6 +57,11 @@ impl BitburnerReactor {
     pub fn is_empty(&mut self) -> bool {
         self.drain_queue();
         self.wakers_ram.is_empty() && self.wakers_running.is_empty()
+    }
+
+    pub fn has_no_running(&mut self) -> bool {
+        self.drain_queue();
+        self.wakers_running.is_empty()
     }
 
     fn drain_queue(&mut self) {
@@ -130,9 +137,9 @@ impl BitburnerReactor {
 mod tests {
     use std::task::Waker;
 
-    use super::{BitburnerReactor, WakeDelay, WakersByTime, WakersInOrder};
+    use super::{BitburnerReactor, WakeDelay, WakersByTime, WakersInOrder, RETRY_WAIT};
     use crate::run::waker::{get_task_with_waker, wakes_same, RcTask};
-    use crate::{simple_channel, F64Total, RETRY_WAIT};
+    use crate::{simple_channel, F64Total};
 
     #[test]
     fn test_new() {

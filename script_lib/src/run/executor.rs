@@ -9,6 +9,8 @@ pub type TaskResult = Result<(), String>;
 pub trait SleepFuture: Future<Output = ()> {}
 impl<T: Future<Output = ()>> SleepFuture for T {}
 
+const EXECUTOR_YIELD_MSEC: f64 = 1.0;
+
 #[derive(Debug, Clone, Copy)]
 pub enum RamChange {
     Use(f64),
@@ -58,18 +60,19 @@ where
 
     pub async fn run(&mut self) -> TaskResult {
         loop {
-            if let Some(time) = self.reactor.next_wake() {
-                let duration = time - self.now();
-                if duration > 0.0 {
-                    self.sleep(duration).await;
-                }
-            }
+            let sleep_for = self.reactor.next_wake().map_or(0.0, |t| t - self.now());
+            // Always yield to avoid starving the browser
+            self.sleep(sleep_for.max(EXECUTOR_YIELD_MSEC)).await;
+
             self.reactor.wake_running();
             self.reactor.wake_on_ram_release();
 
             self.poll()?;
             if self.reactor.is_empty() {
                 return Ok(());
+            }
+            if self.reactor.has_no_running() {
+                return Err("All tasks waiting on RAM release".to_owned());
             }
         }
     }
