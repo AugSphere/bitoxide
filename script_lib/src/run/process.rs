@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -20,7 +21,7 @@ pub struct BitburnerProcess {
     ram_hint: f64,
     pid: Option<u32>,
     instant_fn: fn() -> f64,
-    ram_tx: Sender<RamChange>,
+    ram_cell: Rc<RefCell<f64>>,
     schedule_tx: Sender<WakerWithTime>,
     is_released: bool,
     start_instant: Option<f64>,
@@ -30,19 +31,19 @@ pub struct BitburnerProcess {
 #[derive(Debug, Clone)]
 pub struct ExecutorData {
     instant_fn: fn() -> f64,
-    ram_tx: Sender<RamChange>,
+    ram_cell: Rc<RefCell<f64>>,
     schedule_tx: Sender<WakerWithTime>,
 }
 
 impl ExecutorData {
     pub fn new(
         instant_fn: fn() -> f64,
-        ram_tx: Sender<RamChange>,
+        ram_cell: Rc<RefCell<f64>>,
         schedule_tx: Sender<WakerWithTime>,
     ) -> Self {
         ExecutorData {
             instant_fn,
-            ram_tx,
+            ram_cell,
             schedule_tx,
         }
     }
@@ -60,7 +61,7 @@ impl BitburnerProcess {
     ) -> Self {
         let ExecutorData {
             instant_fn,
-            ram_tx,
+            ram_cell,
             schedule_tx,
         } = executor_data;
         BitburnerProcess {
@@ -72,7 +73,7 @@ impl BitburnerProcess {
             ram_hint,
             pid: None,
             instant_fn,
-            ram_tx,
+            ram_cell,
             schedule_tx,
             is_released: false,
             start_instant: None,
@@ -89,7 +90,8 @@ impl BitburnerProcess {
             self.update_ram(RamChange::Use(self.ram_hint));
             self.start_instant = Some(self.now());
             self.pid = Some(pid);
-            self.ns.print(&format!("Launched at {:?}", self.now()));
+            self.ns
+                .print(&format!("{} launched at {:?}", self.addr(), self.now()));
             Ok(())
         } else {
             Err("Failed to launch".to_owned())
@@ -112,10 +114,12 @@ impl BitburnerProcess {
     }
 
     pub fn kill(&mut self) -> bool {
+        self.ns.print(&format!("{} trying to kill", self.addr()));
         if let Some(pid) = self.pid {
             // only call kill if not running, to prevent spamming the tail log
             if self.is_running() && self.ns.kill(pid) {
                 self.release();
+                self.ns.print(&format!("{} killed", self.addr()));
                 return true;
             }
         }
@@ -127,7 +131,7 @@ impl BitburnerProcess {
         if !self.is_released {
             self.update_ram(RamChange::Release(self.ram_hint));
             self.is_released = true;
-            self.ns.print(&format!("Released at {:?}", self.now()));
+            self.ns.print(&format!("{} released", self.addr()));
         }
     }
 
@@ -148,18 +152,30 @@ impl BitburnerProcess {
         self.schedule_tx
             .send((wake_at, waker.clone()))
             .expect("Reactor closed the scheduling queue");
-        self.ns.print(&format!("Sheduled wake at {:?}", wake_at));
+        self.ns
+            .print(&format!("{} sheduled wake: {:?}", self.addr(), wake_at));
     }
 
     fn now(&self) -> f64 {
         (self.instant_fn)()
     }
 
+    fn can_launch(&self) -> bool {
+        *self.ram_cell.borrow() >= self.ram_hint
+    }
+
     fn update_ram(&self, ram_change: RamChange) {
-        self.ram_tx
-            .send(ram_change)
-            .expect("Executor closed RAM queue");
-        self.ns.print(&format!("Updated ram with {:?}", ram_change));
+        let mut ram = self.ram_cell.borrow_mut();
+        match ram_change {
+            RamChange::Use(r) => *ram -= r,
+            RamChange::Release(r) => *ram += r,
+        }
+        self.ns
+            .print(&format!("{} updated ram: {:?}", self.addr(), ram_change));
+    }
+
+    fn addr(&self) -> usize {
+        self as *const Self as usize
     }
 }
 
@@ -170,7 +186,7 @@ impl Future for BitburnerProcess {
         mut self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        self.ns.print(&format!("Being polled at {:?}", self.now()));
+        self.ns.print(&format!("{} being polled", self.addr()));
         self.last_polled = Some(self.now());
         if self.is_launched() {
             if self.is_finished() {
@@ -181,7 +197,12 @@ impl Future for BitburnerProcess {
                 Poll::Pending
             }
         } else {
-            let _ = self.run();
+            if self.can_launch() {
+                match self.run() {
+                    Ok(_) => {}
+                    e @ Err(_) => return Poll::Ready(e),
+                }
+            }
             self.schedule_wake(cx.waker());
             Poll::Pending
         }

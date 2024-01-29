@@ -21,16 +21,18 @@ pub async fn main_rs(ns: NS) {
     };
 
     let mut executor = BitburnerExecutor::new(15.0, now, sleep_millis);
-    let executor_data = ExecutorData::new(
-        now,
-        executor.get_ram_change_queue(),
-        executor.get_schedule_queue(),
-    );
-    let weaken = Box::pin(weaken_process(ns.clone(), "home", None, executor_data));
+    let executor_data =
+        ExecutorData::new(now, executor.get_ram_cell(), executor.get_schedule_queue());
+    let weaken = Box::pin(weaken_process(
+        ns.clone(),
+        "home",
+        Some(5.into()),
+        executor_data,
+    ));
     executor.register(weaken);
     let _ = ns.tail(None, None, vec![]);
     match executor.run().await {
         Ok(()) => {}
-        Err(msg) => ns.tprint(&msg),
+        Err(msg) => ns.print(&msg),
     }
 }

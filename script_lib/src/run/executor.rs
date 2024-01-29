@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::future::Future;
+use std::rc::Rc;
 use std::task::{Context, Poll};
 
 use super::reactor::{BitburnerReactor, WakeDelay, WakerWithTime};
@@ -22,12 +24,10 @@ pub struct BitburnerExecutor<F>
 where
     F: SleepFuture,
 {
-    available_ram: f64,
     woken_tx: Sender<RcTask>,
     woken_rx: Receiver<RcTask>,
-    ram_tx: Sender<RamChange>,
-    ram_rx: Receiver<RamChange>,
     reactor: BitburnerReactor,
+    ram_cell: Rc<RefCell<f64>>,
     sleep_fn: fn(f64) -> F,
 }
 
@@ -37,14 +37,12 @@ where
 {
     pub fn new(max_ram: f64, instant_fn: fn() -> f64, sleep_fn: fn(f64) -> F) -> Self {
         let (woken_tx, woken_rx) = simple_channel::channel::<RcTask>();
-        let (ram_tx, ram_rx) = simple_channel::channel::<RamChange>();
+        let ram_cell = Rc::new(RefCell::new(max_ram));
         let reactor = BitburnerReactor::new(instant_fn);
         BitburnerExecutor {
-            available_ram: max_ram,
             woken_tx,
             woken_rx,
-            ram_tx,
-            ram_rx,
+            ram_cell,
             reactor,
             sleep_fn,
         }
@@ -60,6 +58,7 @@ where
 
     pub async fn run(&mut self) -> TaskResult {
         loop {
+            assert!(*self.ram_cell.borrow() >= 0.0);
             let sleep_for = self.reactor.next_wake().map_or(0.0, |t| t - self.now());
             // Always yield to avoid starving the browser
             self.sleep(sleep_for.max(EXECUTOR_YIELD_MSEC)).await;
@@ -89,7 +88,6 @@ where
                 .try_borrow_mut()
                 .expect("Could not borrow the future from the task");
             let poll = future.as_mut().poll(&mut cx);
-            Self::track_ram_use(&mut self.ram_rx, &mut self.available_ram);
             match poll {
                 Poll::Ready(e @ Err(_)) => {
                     return e;
@@ -107,21 +105,11 @@ where
         self.reactor.now()
     }
 
-    pub fn get_ram_change_queue(&self) -> Sender<RamChange> {
-        self.ram_tx.clone()
+    pub fn get_ram_cell(&self) -> Rc<RefCell<f64>> {
+        self.ram_cell.clone()
     }
 
     pub fn get_schedule_queue(&self) -> Sender<WakerWithTime> {
         self.reactor.get_schedule_queue()
-    }
-
-    fn track_ram_use(ram_rx: &mut Receiver<RamChange>, available_ram: &mut f64) {
-        for change in ram_rx.try_iter() {
-            match change {
-                RamChange::Release(ram) => *available_ram += ram,
-                RamChange::Use(ram) => *available_ram -= ram,
-            }
-            assert!(available_ram >= &mut 0.0);
-        }
     }
 }
