@@ -3,14 +3,13 @@ use std::future::Future;
 use std::panic::panic_any;
 use std::pin::Pin;
 use std::rc::Rc;
-use std::sync::Arc;
 use std::task::Waker;
 use std::thread::{self, ThreadId};
 
-use cooked_waker::{IntoWaker, WakeRef};
+use cooked_waker::{IntoWaker, Wake, WakeRef};
 
 use super::executor::TaskResult;
-use crate::simple_channel::Sender;
+use crate::simple_channel::{Receiver, Sender};
 
 pub type PinnedFuture = Pin<Box<dyn Future<Output = TaskResult>>>;
 pub type Task = RefCell<PinnedFuture>;
@@ -40,7 +39,18 @@ impl SimpleWaker {
 
     pub fn waker(task: RcTask, woken_tx: Sender<RcTask>) -> Waker {
         let waker = Self::new(task, woken_tx);
-        Arc::new(waker).into_waker()
+        Box::new(waker).into_waker()
+    }
+}
+
+impl Wake for SimpleWaker {
+    fn wake(self) {
+        if thread::current().id() != self._thread_id {
+            panic_any(SEND_PANIC);
+        }
+        self.woken_tx
+            .send(self.task)
+            .expect("Executor closed the queue");
     }
 }
 
@@ -65,12 +75,22 @@ where
     (task, waker)
 }
 
+#[allow(dead_code)]
+pub fn wakes_same(woken_rx: &Receiver<RcTask>, waker: &Waker, other: &Waker) -> bool {
+    waker.wake_by_ref();
+    let first = woken_rx.recv().unwrap();
+    other.wake_by_ref();
+    let second = woken_rx.recv().unwrap();
+    RcTask::ptr_eq(&first, &second)
+}
+
 #[cfg(test)]
 mod tests {
+    use std::any::Any;
     use std::task::Waker;
     use std::thread;
 
-    use super::{get_task_with_waker, RcTask, SEND_PANIC};
+    use super::{get_task_with_waker, wakes_same, RcTask, SEND_PANIC};
     use crate::simple_channel;
 
     #[test]
@@ -106,18 +126,35 @@ mod tests {
     }
 
     #[test]
+    fn test_wake_clone_same() {
+        let (woken_tx, woken_rx) = simple_channel::channel::<RcTask>();
+        let future = std::future::ready(Ok(()));
+        let (_, waker) = get_task_with_waker(future, woken_tx);
+        assert!(wakes_same(&woken_rx, &waker, &waker.clone()));
+    }
+
+    #[test]
     fn test_send_panic() {
         let (woken_tx, _woken_rx) = simple_channel::channel::<RcTask>();
         let future = std::future::ready(Ok(()));
         let (_, waker) = get_task_with_waker(future, woken_tx);
 
+        let waker_clone = waker.clone();
+
+        let check = |result: Result<(), Box<dyn Any + Send>>| {
+            assert!(result
+                .is_err_and(|msg| { msg.downcast::<&str>().is_ok_and(|msg| *msg == SEND_PANIC) }));
+        };
+        let result = thread::spawn(move || {
+            waker_clone.wake_by_ref();
+        })
+        .join();
+        check(result);
+
         let result = thread::spawn(move || {
             waker.wake();
         })
         .join();
-
-        assert!(
-            result.is_err_and(|msg| { msg.downcast::<&str>().is_ok_and(|msg| *msg == SEND_PANIC) })
-        );
+        check(result);
     }
 }

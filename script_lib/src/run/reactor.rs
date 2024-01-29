@@ -131,7 +131,7 @@ mod tests {
     use std::task::Waker;
 
     use super::{BitburnerReactor, WakeDelay, WakersByTime, WakersInOrder};
-    use crate::run::waker::{get_task_with_waker, RcTask};
+    use crate::run::waker::{get_task_with_waker, wakes_same, RcTask};
     use crate::{simple_channel, F64Total, RETRY_WAIT};
 
     #[test]
@@ -197,7 +197,7 @@ mod tests {
         let now = 0.0;
         let mut wakers_running = WakersByTime::new();
         let mut wakers_ram = WakersInOrder::new();
-        let (woken_tx, _woken_rx) = simple_channel::channel::<RcTask>();
+        let (woken_tx, woken_rx) = simple_channel::channel::<RcTask>();
 
         let delay_fn = |idx: usize| -> WakeDelay {
             match idx {
@@ -229,7 +229,7 @@ mod tests {
         let assert_same_wakers = |actual: &Vec<Waker>, expected: Vec<&Waker>| {
             assert_eq!(actual.len(), expected.len());
             let mut zipped = actual.iter().zip(expected);
-            assert!(zipped.all(|(a, e)| a.will_wake(e)));
+            assert!(zipped.all(|(a, e)| wakes_same(&woken_rx, a, e)));
         };
 
         assert_eq!(wakers_running.len(), 7);
@@ -250,6 +250,6 @@ mod tests {
             assert_same_wakers(actual_wakers, expected_wakers);
         }
 
-        assert!(wakers_ram[0].will_wake(&w[3]))
+        assert!(wakes_same(&woken_rx, &wakers_ram[0], &w[3]));
     }
 }
