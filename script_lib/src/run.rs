@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use bitburner_api::netscript::ThreadOrOptions;
 use bitburner_api::NS;
@@ -15,7 +15,7 @@ use process::BitburnerProcess;
 pub use self::process::ExecutorData;
 
 pub fn hack_process(
-    ns: Arc<NS>,
+    ns: Rc<NS>,
     host: &str,
     thread_or_options: Option<ThreadOrOptions>,
     executor_data: ExecutorData,
@@ -24,7 +24,7 @@ pub fn hack_process(
 }
 
 pub fn grow_process(
-    ns: Arc<NS>,
+    ns: Rc<NS>,
     host: &str,
     thread_or_options: Option<ThreadOrOptions>,
     executor_data: ExecutorData,
@@ -33,7 +33,7 @@ pub fn grow_process(
 }
 
 pub fn weaken_process(
-    ns: Arc<NS>,
+    ns: Rc<NS>,
     host: &str,
     thread_or_options: Option<ThreadOrOptions>,
     executor_data: ExecutorData,
@@ -48,7 +48,7 @@ enum Script {
 }
 
 fn process(
-    ns: Arc<NS>,
+    ns: Rc<NS>,
     script: Script,
     host: &str,
     thread_or_options: Option<ThreadOrOptions>,

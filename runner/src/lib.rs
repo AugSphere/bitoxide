@@ -1,4 +1,5 @@
-use std::{sync::Arc, time::Duration};
+use std::rc::Rc;
+use std::time::Duration;
 
 use bitburner_api::{wasm_bindgen, wasm_bindgen_futures, NS};
 use gloo_timers::future::sleep;
@@ -6,7 +7,7 @@ use script_lib::*;
 
 #[wasm_bindgen]
 pub async fn main_rs(ns: NS) {
-    let ns = Arc::new(ns);
+    let ns = Rc::new(ns);
     let now = || {
         let window = web_sys::window().expect("should have a window in this context");
         let performance = window

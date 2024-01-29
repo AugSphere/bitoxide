@@ -1,6 +1,6 @@
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::rc::Rc;
 use std::task::{Poll, Waker};
 
 use bitburner_api::netscript::{Arg, ThreadOrOptions};
@@ -11,7 +11,7 @@ use super::reactor::{WakeDelay, WakerWithTime};
 use crate::simple_channel::Sender;
 
 pub struct BitburnerProcess {
-    ns: Arc<NS>,
+    ns: Rc<NS>,
     script: String,
     thread_or_options: Option<ThreadOrOptions>,
     args: Vec<Arg>,
@@ -50,7 +50,7 @@ impl ExecutorData {
 
 impl BitburnerProcess {
     pub fn new(
-        ns: Arc<NS>,
+        ns: Rc<NS>,
         script: String,
         thread_or_options: Option<ThreadOrOptions>,
         args: Vec<Arg>,
