@@ -5,6 +5,7 @@ use crate::simple_channel::{self, Receiver, Sender};
 use crate::F64Total;
 
 const RETRY_WAIT: f64 = 25.0;
+const FIRST_WAKE_PAD: f64 = 1.5;
 
 type WakersByTime = BTreeMap<F64Total, Vec<Waker>>;
 type WakersInOrder = Vec<Waker>;
@@ -90,7 +91,7 @@ impl BitburnerReactor {
         let wake_at: Option<f64> = match delay {
             WakeDelay::Immediate => Some(now),
             WakeDelay::Retry => Some(now + RETRY_WAIT),
-            WakeDelay::WakeAt(time) => Some(time),
+            WakeDelay::WakeAt(time) => Some(time + FIRST_WAKE_PAD),
             WakeDelay::AfterNextRamRelease => None,
         };
         if let Some(time) = wake_at {
@@ -138,6 +139,7 @@ mod tests {
     use std::task::Waker;
 
     use super::{BitburnerReactor, WakeDelay, WakersByTime, WakersInOrder, RETRY_WAIT};
+    use crate::run::reactor::FIRST_WAKE_PAD;
     use crate::run::waker::{get_task_with_waker, wakes_same, RcTask};
     use crate::{simple_channel, F64Total};
 
@@ -239,16 +241,17 @@ mod tests {
             assert!(zipped.all(|(a, e)| wakes_same(&woken_rx, a, e)));
         };
 
-        assert_eq!(wakers_running.len(), 7);
+        assert_eq!(wakers_running.len(), 8);
         assert_eq!(wakers_ram.len(), 1);
 
         let expected = vec![
-            (now + 0.0, vec![&w[0], &w[9]]),
-            (now + 1.0, vec![&w[1]]),
-            (now + 2.0, vec![&w[2]]),
-            (now + 5.0, vec![&w[5]]),
-            (now + 6.0, vec![&w[6]]),
-            (now + 7.0, vec![&w[7]]),
+            (now + 0.0, vec![&w[9]]),
+            (now + 0.0 + FIRST_WAKE_PAD, vec![&w[0]]),
+            (now + 1.0 + FIRST_WAKE_PAD, vec![&w[1]]),
+            (now + 2.0 + FIRST_WAKE_PAD, vec![&w[2]]),
+            (now + 5.0 + FIRST_WAKE_PAD, vec![&w[5]]),
+            (now + 6.0 + FIRST_WAKE_PAD, vec![&w[6]]),
+            (now + 7.0 + FIRST_WAKE_PAD, vec![&w[7]]),
             (now + RETRY_WAIT, vec![&w[4], &w[8]]),
         ];
         for (time, expected_wakers) in expected {
