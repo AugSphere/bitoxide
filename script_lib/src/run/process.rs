@@ -90,8 +90,6 @@ impl BitburnerProcess {
             self.update_ram(RamChange::Use(self.ram_hint));
             self.start_instant = Some(self.now());
             self.pid = Some(pid);
-            self.ns
-                .print(&format!("{} launched at {:?}", self.addr(), self.now()));
             Ok(())
         } else {
             Err("Failed to launch".to_owned())
@@ -114,7 +112,6 @@ impl BitburnerProcess {
     }
 
     pub fn kill(&mut self) -> bool {
-        self.ns.print(&format!("{} trying to kill", self.addr()));
         if let Some(pid) = self.pid {
             // only call kill if not running, to prevent spamming the tail log
             if self.is_running() && self.ns.kill(pid) {
@@ -131,7 +128,6 @@ impl BitburnerProcess {
         if !self.is_released {
             self.update_ram(RamChange::Release(self.ram_hint));
             self.is_released = true;
-            self.ns.print(&format!("{} released", self.addr()));
         }
     }
 
@@ -153,7 +149,7 @@ impl BitburnerProcess {
             .send((wake_at, waker.clone()))
             .expect("Reactor closed the scheduling queue");
         self.ns
-            .print(&format!("{} sheduled wake: {:?}", self.addr(), wake_at));
+            .print(&format!("{} sheduled wake: {:.3}", self.addr(), wake_at));
     }
 
     fn now(&self) -> f64 {
@@ -171,7 +167,7 @@ impl BitburnerProcess {
             RamChange::Release(r) => *ram += r,
         }
         self.ns
-            .print(&format!("{} updated ram: {:?}", self.addr(), ram_change));
+            .print(&format!("{} updated ram: {:.3}", self.addr(), ram_change));
     }
 
     fn addr(&self) -> usize {
@@ -186,7 +182,11 @@ impl Future for BitburnerProcess {
         mut self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        self.ns.print(&format!("{} being polled", self.addr()));
+        self.ns.print(&format!(
+            "{} being polled at {:.3}",
+            self.addr(),
+            self.now() / 1e3
+        ));
         self.last_polled = Some(self.now());
         if self.is_launched() {
             if self.is_finished() {
@@ -198,9 +198,8 @@ impl Future for BitburnerProcess {
             }
         } else {
             if self.can_launch() {
-                match self.run() {
-                    Ok(_) => {}
-                    e @ Err(_) => return Poll::Ready(e),
+                if let e @ Err(_) = self.run() {
+                    return Poll::Ready(e);
                 }
             }
             self.schedule_wake(cx.waker());
@@ -211,6 +210,7 @@ impl Future for BitburnerProcess {
 
 impl Drop for BitburnerProcess {
     fn drop(&mut self) {
+        self.ns.print(&format!("{} dropping", self.addr()));
         self.kill();
     }
 }

@@ -19,6 +19,19 @@ pub enum RamChange {
     Release(f64),
 }
 
+impl std::fmt::Display for RamChange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut fmt = |tag: &str, val: &f64| {
+            let prec = f.precision().unwrap_or(3);
+            write!(f, "{tag}({val:.0$})", prec)
+        };
+        match self {
+            RamChange::Use(v) => fmt("Use", v),
+            RamChange::Release(v) => fmt("Release", v),
+        }
+    }
+}
+
 /// Executes tasks as RAM becomes available.
 pub struct BitburnerExecutor<F>
 where

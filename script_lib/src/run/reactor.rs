@@ -19,6 +19,20 @@ pub enum WakeDelay {
     WakeAt(f64),
 }
 
+impl std::fmt::Display for WakeDelay {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WakeDelay::Immediate => write!(f, "Immediate"),
+            WakeDelay::Retry => write!(f, "Retry"),
+            WakeDelay::AfterNextRamRelease => write!(f, "AfterNextRamRelease"),
+            WakeDelay::WakeAt(time) => {
+                let prec = f.precision().unwrap_or(3);
+                write!(f, "WakeAt({:.*})", prec, time / 1e3)
+            }
+        }
+    }
+}
+
 pub struct BitburnerReactor {
     reactor_tx: Sender<WakerWithTime>,
     reactor_rx: Receiver<WakerWithTime>,
