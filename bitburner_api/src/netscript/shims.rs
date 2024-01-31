@@ -121,6 +121,9 @@ extern "C" {
     #[wasm_bindgen(method, js_name = hasRootAccess)]
     pub(super) fn has_root_access_shim(this: &NS, host: &str) -> bool;
 
+    #[wasm_bindgen(method, js_name = getHostname)]
+    pub(super) fn get_hostname_shim(this: &NS) -> String;
+
     #[wasm_bindgen(method, js_name = getHackingLevel)]
     pub(super) fn get_hacking_level_shim(this: &NS) -> JsValue;
 
