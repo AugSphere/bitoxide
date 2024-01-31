@@ -145,6 +145,12 @@ extern "C" {
     #[wasm_bindgen(method, js_name = getServerBaseSecurityLevel)]
     pub(super) fn get_server_base_security_level_shim(this: &NS, host: &str) -> f64;
 
+    #[wasm_bindgen(method, js_name = getServerMaxRam)]
+    pub(super) fn get_server_max_ram_shim(this: &NS, host: &str) -> f64;
+
+    #[wasm_bindgen(method, js_name = getServerUsedRam)]
+    pub(super) fn get_server_used_ram_shim(this: &NS, host: &str) -> f64;
+
     #[wasm_bindgen(method, js_name = getServerRequiredHackingLevel)]
     pub(super) fn get_server_required_hacking_level_shim(this: &NS, host: &str) -> JsValue;
 

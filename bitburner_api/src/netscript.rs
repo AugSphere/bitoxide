@@ -686,6 +686,20 @@ impl NS {
         self.get_server_base_security_level_shim(host)
     }
 
+    /// Get the maximum amount of RAM (GB) on a server.
+    ///
+    /// **RAM cost: 0.05 GB**
+    pub fn get_server_max_ram(self: &NS, host: &str) -> f64 {
+        self.get_server_max_ram_shim(host)
+    }
+
+    /// Get the used RAM (GB) on a server.
+    ///
+    /// **RAM cost: 0.05 GB**
+    pub fn get_server_used_ram(self: &NS, host: &str) -> f64 {
+        self.get_server_used_ram_shim(host)
+    }
+
     /// Returns the required hacking level of the target server.
     ///
     /// **RAM cost: 0.1 GB**
