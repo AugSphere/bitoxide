@@ -450,6 +450,23 @@ impl NS {
         self.clear_log_shim()
     }
 
+    /// Disables logging for the given function.
+    ///
+    /// Logging can be disabled for all functions by passing `ALL` as the
+    /// argument.
+    pub fn disable_log(self: &NS, fun: &str) {
+        self.disable_log_shim(fun)
+    }
+
+    /// Enable logging for a certain function.
+    ///
+    /// Re-enables logging for the given function. If `ALL` is passed into this
+    /// function as an argument, then it will revert the effects of
+    /// disableLog(`ALL`).
+    pub fn enable_log(self: &NS, fun: &str) {
+        self.enable_log_shim(fun)
+    }
+
     /// Open the tail window of a script.
     ///
     /// **RAM cost: 0 GB**
