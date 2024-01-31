@@ -14,18 +14,31 @@
 //! # Bitburner "async"
 //! Bitburner promises are not real promises, generally the only safe thing to
 //! do with them is to immediately await before calling any other netscript
-//! functions. This means you can not combine them via join or select, they are
-//! in essence blocking functions. As a consequence of this, error handling gets
-//! messed up due to Bitburner promises not fulfilling the invariants expected
-//! of JS promises. This leads to the following:
+//! functions. This means you can not combine them via join, select, or even
+//! register a handler with functions like [`js_sys::Promise::then2`]. They are
+//! in practice blocking functions. As a consequence of this, error handling
+//! involving [`netscript`] "async" functions is prone to panics,
+//! which leads to the following:
 //!
 //! ## **All async functions can hang Bitburner scripts!**
 //! Any errors from Bitburner async functions can lead to the scripts being
 //! stuck without Bitburner being able to automatically kill them and propagate
-//! the errors. These functions are marked unsafe. There are safe variants that
-//! do runtime checks which increase the amount of (in-game RAM) they use. If
-//! you use the unsafe variants, make sure the inputs are valid before calling
-//! them.
+//! the errors. These functions are marked unsafe. If
+//! you use them, make sure the inputs are valid before calling
+//! them and await the future **immediately**, without passing it to any
+//! intermediate handling.
+//!
+//! ## An alternative to Bitburner async
+//! You can genrally avoid having to call any "async" functions of
+//! [`netscript`]. [gloo-timers](https://crates.io/crates/gloo-timers)
+//! (among many others) has a usable alternative to [`NS::sleep`], and
+//! [`NS::run`] can be used to launch helper scripts like
+//! ```js
+//! export async function main(ns) {
+//!   await ns.hack(ns.args[0]);
+//! }
+//! ```
+//! without blocking.
 
 pub extern crate js_sys;
 pub extern crate wasm_bindgen;

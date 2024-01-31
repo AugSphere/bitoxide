@@ -69,8 +69,7 @@ impl NS {
 
     /// Steal a server's money.
     ///
-    /// **RAM cost: 0.55 GB** if [`BasicHGWOptions::threads`] is specified,
-    /// **0.25 GB** otherwise.
+    /// **RAM cost: 0.1 GB**
     ///
     /// Function that is used to try and hack servers to steal money and gain
     /// hacking experience. The runtime for this command depends on your
@@ -89,17 +88,19 @@ impl NS {
     /// A successful `hack()` on a server will raise that server’s security
     /// level by 0.002.
     ///
-    /// Performs runtime checks to make sure no exception occurs in the async JS
-    /// `hack` call. If you can statically guarantee that arguments are
-    /// valid, consider using [`NS::hack_unchecked`] instead.
+    /// # Safety
+    /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception that
+    /// will hang the script, for example if more threads are requested than
+    /// are available. The future not being awaited immediately can have a
+    /// similar effect. See [bitburner_api
+    /// docs](crate#all-async-functions-can-hang-bitburner-scripts).
     ///
     /// # Examples
     /// ```rust
     /// #[wasm_bindgen]
     /// pub async fn main_rs(ns: &NS) {
-    ///     if let Ok(amount) = ns.hack("foodnstuff", None).await {
-    ///         ns.tprint(&format!("Got {amount}"))
-    ///     }
+    ///     let amount = ns.hack("foodnstuff", None).await;
+    ///     ns.tprint(&format!("Got {amount}"));
     /// }
     /// ```
     /// ```text
@@ -108,32 +109,13 @@ impl NS {
     /// Got 0.0
     /// Script finished running
     /// ```
-    pub async fn hack(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> Result<f64, String> {
-        self.check_hgw_args(host, opts)?;
-        unsafe { Ok(self.hack_unchecked(host, opts).await) }
-    }
-
-    /// Unsafe version of [`NS::hack`].
-    ///
-    /// **RAM cost: 0.1 GB**
-    ///
-    /// # Panics
-    /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
-    /// example if more threads are requested than are available. See
-    /// [bitburner_api
-    /// docs](crate#all-async-functions-can-hang-bitburner-scripts).
-    pub async unsafe fn hack_unchecked(
-        self: &NS,
-        host: &str,
-        opts: Option<BasicHGWOptions>,
-    ) -> f64 {
+    pub async unsafe fn hack(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
         self.hack_shim(host, opts).await.unchecked_into_f64()
     }
 
     /// Spoof money in a server's bank account, increasing the amount available.
     ///
-    /// **RAM cost: 0.60 GB** if [`BasicHGWOptions::threads`] is specified,
-    /// **0.30 GB** otherwise.
+    /// **RAM cost: 0.15 GB**
     ///
     /// Use your hacking skills to increase the amount of money available on a
     /// server.
@@ -172,35 +154,19 @@ impl NS {
     /// threads. The security increase can be determined using
     /// [`NS::growth_analyze_security`].
     ///
-    /// Performs runtime checks to make sure no exception occurs in the async JS
-    /// `hack` call. If you can statically guarantee that arguments are
-    /// valid, consider using [`NS::grow_unchecked`] instead.
-    pub async fn grow(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> Result<f64, String> {
-        self.check_hgw_args(host, opts)?;
-        unsafe { Ok(self.grow_unchecked(host, opts).await) }
-    }
-
-    /// Unsafe version of [`NS::grow`].
-    ///
-    /// **RAM cost: 0.15 GB**
-    ///
-    /// # Panics
-    /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
-    /// example if more threads are requested than are available. See
-    /// [bitburner_api
+    /// # Safety
+    /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception that
+    /// will hang the script, for example if more threads are requested than
+    /// are available. The future not being awaited immediately can have a
+    /// similar effect. See [bitburner_api
     /// docs](crate#all-async-functions-can-hang-bitburner-scripts).
-    pub async unsafe fn grow_unchecked(
-        self: &NS,
-        host: &str,
-        opts: Option<BasicHGWOptions>,
-    ) -> f64 {
+    pub async unsafe fn grow(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
         self.grow_shim(host, opts).await.unchecked_into_f64()
     }
 
     /// Reduce a server's security level.
     ///
-    /// **RAM cost: 0.60 GB** if [`BasicHGWOptions::threads`] is specified,
-    /// **0.30 GB** otherwise.
+    /// **RAM cost: 0.15 GB**
     ///
     /// Use your hacking skills to attack a server’s security, lowering the
     /// server’s security level. The runtime for this function depends on
@@ -216,32 +182,13 @@ impl NS {
     /// requires root access to the target server, but there is no required
     /// hacking level to run the function.
     ///
-    /// Performs runtime checks to make sure no exception occurs in the async JS
-    /// `hack` call. If you can statically guarantee that arguments are
-    /// valid, consider using [`NS::weaken_unchecked`] instead.
-    pub async fn weaken(
-        self: &NS,
-        host: &str,
-        opts: Option<BasicHGWOptions>,
-    ) -> Result<f64, String> {
-        self.check_hgw_args(host, opts)?;
-        unsafe { Ok(self.weaken_unchecked(host, opts).await) }
-    }
-
-    /// Unsafe version of [`NS::weaken`].
-    ///
-    /// **RAM cost: 0.15 GB**
-    ///
-    /// # Panics
-    /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception, for
-    /// example if more threads are requested than are available. See
-    /// [bitburner_api
+    /// # Safety
+    /// Invalid host or [`BasicHGWOptions`] can will lead to a JS exception that
+    /// will hang the script, for example if more threads are requested than
+    /// are available. The future not being awaited immediately can have a
+    /// similar effect. See [bitburner_api
     /// docs](crate#all-async-functions-can-hang-bitburner-scripts).
-    pub async unsafe fn weaken_unchecked(
-        self: &NS,
-        host: &str,
-        opts: Option<BasicHGWOptions>,
-    ) -> f64 {
+    pub async unsafe fn weaken(self: &NS, host: &str, opts: Option<BasicHGWOptions>) -> f64 {
         self.weaken_shim(host, opts).await.unchecked_into_f64()
     }
 
@@ -433,7 +380,12 @@ impl NS {
     ///     ns.sleep(5000.0).await;
     /// }
     /// ```
-    pub async fn sleep(self: &NS, millis: f64) {
+    ///
+    /// # Safety
+    /// The future not being awaited immediately can cause the Bitburner script
+    /// to hang. See [bitburner_api
+    /// docs](crate#all-async-functions-can-hang-bitburner-scripts).
+    pub async unsafe fn sleep(self: &NS, millis: f64) {
         let Some(ret) = self.sleep_shim(millis).await.as_bool() else {
             panic!("JS ns.sleep Promise did not resolve to a bool");
         };

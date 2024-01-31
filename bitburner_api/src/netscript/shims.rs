@@ -67,7 +67,7 @@ extern "C" {
     ) -> JsValue;
 
     #[wasm_bindgen(method, js_name = sleep)]
-    pub(super) async fn sleep_shim(this: &NS, millis: f64) -> JsValue;
+    pub(super) async unsafe fn sleep_shim(this: &NS, millis: f64) -> JsValue;
 
     #[wasm_bindgen(method, js_name = print)]
     pub(super) fn print_shim(this: &NS, to_print: &str);
