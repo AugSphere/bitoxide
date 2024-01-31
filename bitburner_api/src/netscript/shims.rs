@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
-use crate::netscript::{Arg, BasicHGWOptions, NetscriptPort, RunningScript};
+use crate::netscript::{Arg, BasicHGWOptions, NetscriptPort, RunningScript, Server};
 
 #[wasm_bindgen]
 extern "C" {
@@ -123,6 +123,9 @@ extern "C" {
 
     #[wasm_bindgen(method, js_name = getHackingLevel)]
     pub(super) fn get_hacking_level_shim(this: &NS) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = getServer)]
+    pub(super) fn get_server_shim(this: &NS, host: Option<&str>) -> Server;
 
     #[wasm_bindgen(method, js_name = getServerMoneyAvailable)]
     pub(super) fn get_server_money_available_shim(this: &NS, host: &str) -> f64;

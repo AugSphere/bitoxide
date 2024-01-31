@@ -3,6 +3,7 @@
 mod arg_types;
 mod port;
 mod running_script;
+mod server;
 mod shims;
 
 pub use arg_types::{Arg, BasicHGWOptions, FilenameOrPID, PortData, RunOptions, ThreadOrOptions};
@@ -17,6 +18,11 @@ pub use port::NetscriptPort;
 pub use running_script::RunningScript;
 /// Shape and position of a [`tail`](NS::tail) window.
 pub use running_script::TailProperties;
+/// A server.
+///
+/// Not all servers have all of these properties - optional properties
+/// are filled with default values.
+pub use server::Server;
 /// Collection of all functions passed to scripts.
 ///
 /// # Basic usage example
@@ -655,6 +661,14 @@ impl NS {
     /// **RAM cost: 0.05 GB**
     pub fn get_hacking_level(self: &NS) -> u32 {
         self.get_hacking_level_shim().unchecked_into_f64() as u32
+    }
+
+    /// Returns a server object for the given server. Defaults to the running
+    /// script's server if host is not specified.
+    ///
+    /// **RAM cost: 2 GB**
+    pub fn get_server(self: &NS, host: Option<&str>) -> Server {
+        self.get_server_shim(host)
     }
 
     /// Get money available on a server.
