@@ -78,6 +78,12 @@ extern "C" {
     #[wasm_bindgen(method, js_name = clearLog)]
     pub(super) fn clear_log_shim(this: &NS);
 
+    #[wasm_bindgen(method, js_name = disableLog)]
+    pub(super) fn disable_log_shim(this: &NS, fun: &str);
+
+    #[wasm_bindgen(method, js_name = enableLog)]
+    pub(super) fn enable_log_shim(this: &NS, fun: &str);
+
     #[wasm_bindgen(catch, method, variadic, js_name = tail)]
     pub(super) fn tail_shim(
         this: &NS,
