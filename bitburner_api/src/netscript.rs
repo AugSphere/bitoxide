@@ -608,6 +608,14 @@ impl NS {
         self.has_root_access_shim(host)
     }
 
+    /// Returns a string with the hostname of the server that the script is
+    /// running on.
+    ///
+    /// **RAM cost: 0.05 GB**
+    pub fn get_hostname(self: &NS) -> String {
+        self.get_hostname_shim()
+    }
+
     /// Returns the player’s current hacking level.
     ///
     /// **RAM cost: 0.05 GB**
