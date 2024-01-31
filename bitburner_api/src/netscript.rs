@@ -39,7 +39,7 @@ pub use server::Server;
 /// ```
 pub use shims::NS;
 
-use crate::extensions::AsJsExt;
+use crate::extensions::ToJsExt;
 
 impl NS {
     /// Arguments passed into the script.
@@ -479,7 +479,7 @@ impl NS {
     ) -> Result<(), String> {
         let filename = filename.into();
         let hostname = hostname.map(|s| s.to_owned());
-        self.tail_shim(&filename, hostname.as_deref(), &args.as_js())
+        self.tail_shim(&filename, hostname.as_deref(), &args.to_js())
             .map_err(|msg| format!("{msg:?}"))
     }
 
@@ -577,7 +577,7 @@ impl NS {
         thread_or_options: Option<ThreadOrOptions>,
         args: Vec<Arg>,
     ) -> u32 {
-        self.run_shim(script, &thread_or_options.into(), &args.as_js())
+        self.run_shim(script, &thread_or_options.into(), &args.to_js())
     }
 
     /// Terminate the script with the provided PID.
@@ -741,7 +741,7 @@ impl NS {
         host: Option<&str>,
         args: Vec<Arg>,
     ) -> bool {
-        self.is_running_shim(&script.into(), host, &args.as_js())
+        self.is_running_shim(&script.into(), host, &args.to_js())
     }
 
     /// Get general info about a running script.
@@ -775,7 +775,7 @@ impl NS {
     ) -> Option<RunningScript> {
         let filename = filename.into();
         let hostname = hostname.map(|s| s.to_owned());
-        self.get_running_script_shim(&filename, hostname.as_deref(), &args.as_js())
+        self.get_running_script_shim(&filename, hostname.as_deref(), &args.to_js())
     }
 
     /// Get the execution time of a [`NS::hack`] call.

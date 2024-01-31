@@ -1,17 +1,17 @@
 use wasm_bindgen::JsValue;
 
-pub trait AsJsExt<Output>
+pub trait ToJsExt<Output>
 where
     Output: Into<JsValue>,
 {
-    fn as_js(self) -> Output;
+    fn to_js(self) -> Output;
 }
 
-impl<T> AsJsExt<js_sys::Array> for Vec<T>
+impl<T> ToJsExt<js_sys::Array> for Vec<T>
 where
     T: Into<JsValue>,
 {
-    fn as_js(self) -> js_sys::Array {
+    fn to_js(self) -> js_sys::Array {
         js_sys::Array::from_iter(self.into_iter().map(|arg| arg.into()))
     }
 }
