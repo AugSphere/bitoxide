@@ -4,7 +4,7 @@ use bitburner_api::netscript::ThreadOrOptions;
 use bitburner_api::NS;
 
 mod executor;
-pub use executor::BitburnerExecutor;
+pub use executor::{BitburnerExecutor, SleepFuture};
 
 mod reactor;
 mod waker;
