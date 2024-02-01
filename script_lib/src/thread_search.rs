@@ -7,27 +7,33 @@ pub fn get_threads_for_full_weaken(ns: &NS, host: &str, cores: u32) -> u32 {
         return 0;
     }
     let diff = cur_security - min_security;
-    let mut right_bound = 1;
-    while ns.weaken_analyze(right_bound, Some(cores)) < diff {
-        right_bound *= 2;
+    weaken_analyze_threads(ns, diff, Some(cores))
+}
+
+pub fn weaken_analyze_threads(ns: &NS, security_decrease: f64, cores: Option<u32>) -> u32 {
+    let mut max_weaken_threads = 1;
+    while ns.weaken_analyze(max_weaken_threads, cores) < security_decrease {
+        max_weaken_threads *= 2;
     }
-    let left_bound = right_bound / 2;
-    binary_search(
-        |&threads| ns.weaken_analyze(threads, Some(cores)) >= diff,
-        |l, r| (l + r) / 2,
-        left_bound,
-        right_bound,
+    split_thread_solve(
+        max_weaken_threads,
+        |t| ns.weaken_analyze(t, cores),
+        |_| security_decrease,
     )
 }
 
-pub fn weaken_threads_to_grow(ns: &NS, threads: u32, cores: u32) -> u32 {
+fn split_thread_solve<F1, F2>(threads: u32, high_prio_fn: F1, low_prio_fn: F2) -> u32
+where
+    F1: Fn(u32) -> f64,
+    F2: Fn(u32) -> f64,
+{
     let left_bound = 0;
     let right_bound = threads;
     let splitter = |l, r| (l + r) / 2;
-    let pred = |&weaken_threads: &u32| -> bool {
-        let sec_inc = ns.growth_analyze_security(threads - weaken_threads, None, Some(cores));
-        let sec_dec = ns.weaken_analyze(weaken_threads, Some(cores));
-        sec_dec >= sec_inc
+    let pred = |&high_prio_threads: &u32| -> bool {
+        let high_prio_out = high_prio_fn(high_prio_threads);
+        let low_prio_out = low_prio_fn(threads - high_prio_threads);
+        high_prio_out >= low_prio_out
     };
     binary_search(pred, splitter, left_bound, right_bound)
 }

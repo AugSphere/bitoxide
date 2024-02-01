@@ -8,6 +8,9 @@ pub(crate) mod simple_channel;
 mod run;
 pub use run::*;
 
+mod batch;
+pub use batch::*;
+
 pub mod find_servers;
 pub mod thread_search;
 
