@@ -2,10 +2,9 @@ use std::rc::Rc;
 
 use bitburner_api::NS;
 
-use crate::{
-    find_hackable_servers, get_threads_for_full_weaken, weaken_process, BitburnerExecutor,
-    ExecutorData, SleepFuture,
-};
+use crate::find_servers::find_hackable_servers;
+use crate::thread_search::get_threads_for_full_weaken;
+use crate::{weaken_process, BitburnerExecutor, ExecutorData, SleepFuture};
 
 pub async fn weaken_all<F>(
     ns: Rc<NS>,
