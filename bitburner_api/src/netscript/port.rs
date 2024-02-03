@@ -21,7 +21,7 @@ impl NetscriptPort {
     }
 
     /// Sleeps until the port is written to.
-    pub async fn next_write(self: &NetscriptPort) {
+    pub async unsafe fn next_write(self: &NetscriptPort) {
         self.next_write_shim().await;
     }
 
@@ -78,7 +78,7 @@ extern "C" {
     fn try_write_shim(this: &NetscriptPort, value: JsValue) -> bool;
 
     #[wasm_bindgen(method, js_name = nextWrite)]
-    async fn next_write_shim(this: &NetscriptPort);
+    async unsafe fn next_write_shim(this: &NetscriptPort);
 
     #[wasm_bindgen(method, js_name = read)]
     fn read_shim(this: &NetscriptPort) -> JsValue;
