@@ -1,5 +1,7 @@
 use wasm_bindgen::JsValue;
 
+use crate::netscript::BitburnerError;
+
 /// An argument passed into a script. For use with
 /// [`args`](crate::netscript::NS::args).
 #[derive(Debug, PartialEq, Clone)]
@@ -58,7 +60,7 @@ impl From<Arg> for JsValue {
 }
 
 impl TryFrom<JsValue> for Arg {
-    type Error = String;
+    type Error = BitburnerError;
 
     fn try_from(value: JsValue) -> Result<Self, Self::Error> {
         if let Some(bool) = value.as_bool() {
@@ -70,7 +72,7 @@ impl TryFrom<JsValue> for Arg {
         if let Some(string) = value.as_string() {
             return Ok(Arg::String(string));
         };
-        Err(format!("Unexpected argument type of value: {value:?}"))
+        Err(format!("Unexpected argument type of value: {value:?}").into())
     }
 }
 

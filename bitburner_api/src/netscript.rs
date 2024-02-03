@@ -2,6 +2,7 @@
 
 mod arg_types;
 mod port;
+mod return_types;
 mod running_script;
 mod server;
 mod shims;
@@ -13,6 +14,7 @@ pub use arg_types::{Arg, BasicHGWOptions, FilenameOrPID, PortData, RunOptions, T
 /// Size of the port queue is controlled by the `Netscript port size` setting in
 /// Bitburner options.
 pub use port::NetscriptPort;
+pub use return_types::BitburnerError;
 /// Properties of a script, can be obtained from
 /// [`get_running_script`](NS::get_running_script).
 pub use running_script::RunningScript;
@@ -207,7 +209,7 @@ impl NS {
             self.print(&("ERROR ".to_owned() + &msg));
             return Err(msg);
         }
-        if !self.has_root_access(host) {
+        if !self.has_root_access(host)? {
             let msg = format!("No root access to {host}");
             self.print(&("ERROR ".to_owned() + &msg));
             return Err(msg);
@@ -217,7 +219,7 @@ impl NS {
             ..
         }) = opts
         {
-            let own_script = self.get_running_script(None, None, self.args()).unwrap();
+            let own_script = self.get_running_script(None, None, self.args())?.unwrap();
             let own_threads = own_script.threads();
             if requested_threads > own_threads {
                 let msg =
@@ -242,7 +244,6 @@ impl NS {
     ///   weaken.
     pub fn weaken_analyze(self: &NS, threads: u32, cores: Option<u32>) -> f64 {
         self.weaken_analyze_shim(threads, cores)
-            .unchecked_into_f64()
     }
 
     /// Get the part of money stolen with a single thread.
@@ -266,8 +267,8 @@ impl NS {
     /// then you will steal 1%, or 0.01 of its total money.
     /// If you hack using N threads, then you will steal N*0.01 times its total
     /// money.
-    pub fn hack_analyze(self: &NS, host: &str) -> f64 {
-        self.hack_analyze_shim(host).unchecked_into_f64()
+    pub fn hack_analyze(self: &NS, host: &str) -> Result<f64, BitburnerError> {
+        self.hack_analyze_shim(host)
     }
 
     /// Get the security increase for a number of threads.
@@ -282,9 +283,12 @@ impl NS {
     /// * hostname - Hostname of the target server. The number of threads is
     ///   limited to the number needed to hack the server's maximum amount of
     ///   money.
-    pub fn hack_analyze_security(self: &NS, threads: u32, hostname: Option<&str>) -> f64 {
+    pub fn hack_analyze_security(
+        self: &NS,
+        threads: u32,
+        hostname: Option<&str>,
+    ) -> Result<f64, BitburnerError> {
         self.hack_analyze_security_shim(threads, hostname)
-            .unchecked_into_f64()
     }
 
     /// Get the chance of successfully hacking a server.
@@ -303,8 +307,8 @@ impl NS {
     ///
     /// # Arguments
     /// * host - Hostname of the target server.
-    pub fn hack_analyze_chance(self: &NS, host: &str) -> f64 {
-        self.hack_analyze_chance_shim(host).unchecked_into_f64()
+    pub fn hack_analyze_chance(self: &NS, host: &str) -> Result<f64, BitburnerError> {
+        self.hack_analyze_chance_shim(host)
     }
 
     /// Calculate the number of grow threads needed for a given multiplicative
@@ -333,7 +337,7 @@ impl NS {
     /// # Examples
     /// ```rust
     /// // calculate number of grow threads to apply 2x growth multiplier on n00dles (does not include the additive growth).
-    /// let grow_threads = ns.growth_analyze("n00dles", 2.0);
+    /// let grow_threads = ns.growth_analyze("n00dles", 2.0).unwrap();
     /// ```
     /// # Arguments
     /// * host - Hostname of the target server.
@@ -341,9 +345,13 @@ impl NS {
     ///   applying additive growth. Decimal form.
     /// * cores - Number of cores on the host running the grow function.
     ///   Optional, defaults to 1.
-    pub fn growth_analyze(self: &NS, host: &str, multiplier: f64, cores: Option<u32>) -> f64 {
+    pub fn growth_analyze(
+        self: &NS,
+        host: &str,
+        multiplier: f64,
+        cores: Option<u32>,
+    ) -> Result<f64, BitburnerError> {
         self.growth_analyze_shim(host, multiplier, cores)
-            .unchecked_into_f64()
     }
 
     /// Calculate the security increase for a number of grow threads.
@@ -365,9 +373,8 @@ impl NS {
         threads: u32,
         hostname: Option<&str>,
         cores: Option<u32>,
-    ) -> f64 {
+    ) -> Result<f64, BitburnerError> {
         self.growth_analyze_security_shim(threads, hostname, cores)
-            .unchecked_into_f64()
     }
 
     /// Suspends the script for `millis` milliseconds.
@@ -454,7 +461,7 @@ impl NS {
     ///
     /// Logging can be disabled for all functions by passing `ALL` as the
     /// argument.
-    pub fn disable_log(self: &NS, fun: &str) {
+    pub fn disable_log(self: &NS, fun: &str) -> Result<(), BitburnerError> {
         self.disable_log_shim(fun)
     }
 
@@ -463,7 +470,7 @@ impl NS {
     /// Re-enables logging for the given function. If `ALL` is passed into this
     /// function as an argument, then it will revert the effects of
     /// disableLog(`ALL`).
-    pub fn enable_log(self: &NS, fun: &str) {
+    pub fn enable_log(self: &NS, fun: &str) -> Result<(), BitburnerError> {
         self.enable_log_shim(fun)
     }
 
@@ -493,11 +500,10 @@ impl NS {
         filename: Option<FilenameOrPID>,
         hostname: Option<&str>,
         args: Vec<Arg>,
-    ) -> Result<(), String> {
+    ) -> Result<(), BitburnerError> {
         let filename = filename.into();
         let hostname = hostname.map(|s| s.to_owned());
         self.tail_shim(&filename, hostname.as_deref(), &args.to_js())
-            .map_err(|msg| format!("{msg:?}"))
     }
 
     /// Get the list of servers connected to a server.
@@ -524,8 +530,8 @@ impl NS {
     ///     ns.tprint(&neighbor);
     /// }
     /// ```
-    pub fn scan(self: &NS, host: Option<&str>) -> Option<Vec<String>> {
-        self.scan_shim(host).ok()
+    pub fn scan(self: &NS, host: Option<&str>) -> Result<Vec<String>, BitburnerError> {
+        self.scan_shim(host)
     }
 
     /// Runs NUKE.exe on a server.
@@ -535,11 +541,8 @@ impl NS {
     /// Running NUKE.exe on a target server gives you root access which means
     /// you can execute scripts on said server. NUKE.exe must exist on your home
     /// computer.
-    pub fn nuke(self: &NS, host: &str) -> Result<(), String> {
-        match self.nuke_shim(host) {
-            Ok(()) => Ok(()),
-            Err(msg) => Err(format!("{msg:?}")),
-        }
+    pub fn nuke(self: &NS, host: &str) -> Result<(), BitburnerError> {
+        self.nuke_shim(host)
     }
 
     /// Runs BruteSSH.exe on a server.
@@ -548,11 +551,8 @@ impl NS {
     ///
     /// Runs the BruteSSH.exe program on the target server. BruteSSH.exe must
     /// exist on your home computer.
-    pub fn brute_ssh(self: &NS, host: &str) -> Result<(), String> {
-        match self.brutessh_shim(host) {
-            Ok(()) => Ok(()),
-            Err(msg) => Err(format!("{msg:?}")),
-        }
+    pub fn brute_ssh(self: &NS, host: &str) -> Result<(), BitburnerError> {
+        self.brutessh_shim(host)
     }
 
     /// Runs FTPCrack.exe on a server.
@@ -561,11 +561,8 @@ impl NS {
     ///
     /// Runs the FTPCrack.exe program on the target server. FTPCrack.exe must
     /// exist on your home computer.
-    pub fn ftpcrack(self: &NS, host: &str) -> Result<(), String> {
-        match self.ftpcrack_shim(host) {
-            Ok(()) => Ok(()),
-            Err(msg) => Err(format!("{msg:?}")),
-        }
+    pub fn ftpcrack(self: &NS, host: &str) -> Result<(), BitburnerError> {
+        self.ftpcrack_shim(host)
     }
 
     /// Start another script on the current server.
@@ -585,15 +582,12 @@ impl NS {
     ///
     /// PID stands for Process ID. The PID is a unique identifier for each
     /// script. The PID will always be a positive integer.
-    ///
-    /// Running this function with 0 or fewer threads will cause a runtime
-    /// error.
     pub fn run(
         self: &NS,
         script: &str,
         thread_or_options: Option<ThreadOrOptions>,
         args: Vec<Arg>,
-    ) -> u32 {
+    ) -> Result<u32, BitburnerError> {
         self.run_shim(script, &thread_or_options.into(), &args.to_js())
     }
 
@@ -617,11 +611,11 @@ impl NS {
     ///
     /// @example
     /// ```rust
-    /// if !ns.has_root_access("foodnstuff") {
+    /// if !ns.has_root_access("foodnstuff").unwrap() {
     ///     ns.nuke("foodnstuff").unwrap();
     /// }
     /// ```
-    pub fn has_root_access(self: &NS, host: &str) -> bool {
+    pub fn has_root_access(self: &NS, host: &str) -> Result<bool, BitburnerError> {
         self.has_root_access_shim(host)
     }
 
@@ -637,14 +631,14 @@ impl NS {
     ///
     /// **RAM cost: 0.05 GB**
     pub fn get_hacking_level(self: &NS) -> u32 {
-        self.get_hacking_level_shim().unchecked_into_f64() as u32
+        self.get_hacking_level_shim()
     }
 
     /// Returns a server object for the given server. Defaults to the running
     /// script's server if host is not specified.
     ///
     /// **RAM cost: 2 GB**
-    pub fn get_server(self: &NS, host: Option<&str>) -> Server {
+    pub fn get_server(self: &NS, host: Option<&str>) -> Result<Server, BitburnerError> {
         self.get_server_shim(host)
     }
 
@@ -655,7 +649,7 @@ impl NS {
     /// Returns the amount of money available on a server.
     /// Running this function on the home computer will return the player’s
     /// money.
-    pub fn get_server_money_available(self: &NS, host: &str) -> f64 {
+    pub fn get_server_money_available(self: &NS, host: &str) -> Result<f64, BitburnerError> {
         self.get_server_money_available_shim(host)
     }
 
@@ -664,7 +658,7 @@ impl NS {
     /// **RAM cost: 0.1 GB**
     ///
     /// Returns the maximum amount of money that can be available on a server.
-    pub fn get_server_max_money(self: &NS, host: &str) -> f64 {
+    pub fn get_server_max_money(self: &NS, host: &str) -> Result<f64, BitburnerError> {
         self.get_server_max_money_shim(host)
     }
 
@@ -678,7 +672,7 @@ impl NS {
     /// percentage by which the server’s money is increased when using the
     /// grow function. A higher growth parameter will result in a
     /// higher percentage increase from grow.
-    pub fn get_server_growth(self: &NS, host: &str) -> f64 {
+    pub fn get_server_growth(self: &NS, host: &str) -> Result<f64, BitburnerError> {
         self.get_server_growth_shim(host)
     }
 
@@ -689,14 +683,14 @@ impl NS {
     /// Returns the security level of the target server. A server’s security
     /// level is denoted by a number, typically between 1 and 100
     /// (but it can go above 100).
-    pub fn get_server_security_level(self: &NS, host: &str) -> f64 {
+    pub fn get_server_security_level(self: &NS, host: &str) -> Result<f64, BitburnerError> {
         self.get_server_security_level_shim(host)
     }
 
     /// Returns the minimum security level of the target server.
     ///
     /// **RAM cost: 0.1 GB**
-    pub fn get_server_min_security_level(self: &NS, host: &str) -> f64 {
+    pub fn get_server_min_security_level(self: &NS, host: &str) -> Result<f64, BitburnerError> {
         self.get_server_min_security_level_shim(host)
     }
 
@@ -707,39 +701,37 @@ impl NS {
     /// Returns the base security level of the target server.
     /// For the server's actual security level, use
     /// [`NS::get_server_security_level`].
-    pub fn get_server_base_security_level(self: &NS, host: &str) -> f64 {
+    pub fn get_server_base_security_level(self: &NS, host: &str) -> Result<f64, BitburnerError> {
         self.get_server_base_security_level_shim(host)
     }
 
     /// Get the maximum amount of RAM (GB) on a server.
     ///
     /// **RAM cost: 0.05 GB**
-    pub fn get_server_max_ram(self: &NS, host: &str) -> f64 {
+    pub fn get_server_max_ram(self: &NS, host: &str) -> Result<f64, BitburnerError> {
         self.get_server_max_ram_shim(host)
     }
 
     /// Get the used RAM (GB) on a server.
     ///
     /// **RAM cost: 0.05 GB**
-    pub fn get_server_used_ram(self: &NS, host: &str) -> f64 {
+    pub fn get_server_used_ram(self: &NS, host: &str) -> Result<f64, BitburnerError> {
         self.get_server_used_ram_shim(host)
     }
 
     /// Returns the required hacking level of the target server.
     ///
     /// **RAM cost: 0.1 GB**
-    pub fn get_server_required_hacking_level(self: &NS, host: &str) -> u32 {
+    pub fn get_server_required_hacking_level(self: &NS, host: &str) -> Result<u32, BitburnerError> {
         self.get_server_required_hacking_level_shim(host)
-            .unchecked_into_f64() as u32
     }
 
     /// Returns the number of open ports required to successfully run NUKE.exe
     /// on the specified server.
     ///
     /// **RAM cost: 0.1 GB**
-    pub fn get_server_num_ports_required(self: &NS, host: &str) -> u32 {
+    pub fn get_server_num_ports_required(self: &NS, host: &str) -> Result<u32, BitburnerError> {
         self.get_server_num_ports_required_shim(host)
-            .unchecked_into_f64() as u32
     }
 
     /// Returns a boolean denoting whether or not the specified server exists.
@@ -750,7 +742,7 @@ impl NS {
     }
 
     /// Get a handle to a Netscript Port.
-    pub fn get_port_handle(self: &NS, port_number: u32) -> NetscriptPort {
+    pub fn get_port_handle(self: &NS, port_number: u32) -> Result<NetscriptPort, BitburnerError> {
         self.get_port_handle_shim(port_number)
     }
 
@@ -779,7 +771,7 @@ impl NS {
         script: FilenameOrPID,
         host: Option<&str>,
         args: Vec<Arg>,
-    ) -> bool {
+    ) -> Result<bool, BitburnerError> {
         self.is_running_shim(&script.into(), host, &args.to_js())
     }
 
@@ -811,7 +803,7 @@ impl NS {
         filename: Option<FilenameOrPID>,
         hostname: Option<&str>,
         args: Vec<Arg>,
-    ) -> Option<RunningScript> {
+    ) -> Result<Option<RunningScript>, BitburnerError> {
         let filename = filename.into();
         let hostname = hostname.map(|s| s.to_owned());
         self.get_running_script_shim(&filename, hostname.as_deref(), &args.to_js())
@@ -829,7 +821,7 @@ impl NS {
     ///
     /// Returns the amount of time in milliseconds it takes to execute the
     /// [`NS::hack`] Netscript function.
-    pub fn get_hack_time(self: &NS, host: &str) -> f64 {
+    pub fn get_hack_time(self: &NS, host: &str) -> Result<f64, BitburnerError> {
         self.get_hack_time_shim(host)
     }
 
@@ -844,7 +836,7 @@ impl NS {
     ///
     /// Returns the amount of time in milliseconds it takes to execute the
     /// [`NS::grow`] Netscript function.
-    pub fn get_grow_time(self: &NS, host: &str) -> f64 {
+    pub fn get_grow_time(self: &NS, host: &str) -> Result<f64, BitburnerError> {
         self.get_grow_time_shim(host)
     }
 
@@ -859,7 +851,7 @@ impl NS {
     ///
     /// Returns the amount of time in milliseconds it takes to execute the
     /// [`NS::weaken`] Netscript function.
-    pub fn get_weaken_time(self: &NS, host: &str) -> f64 {
+    pub fn get_weaken_time(self: &NS, host: &str) -> Result<f64, BitburnerError> {
         self.get_weaken_time_shim(host)
     }
 }
