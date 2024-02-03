@@ -5,6 +5,7 @@ use wasm_bindgen::JsValue;
 /// # Examples
 /// Usually results from passing in a host that does not exist:
 /// ```rust
+/// # use bitburner_api::wasm_bindgen;
 /// #[wasm_bindgen]
 /// pub fn main_rs(ns: &bitburner_api::NS) {
 ///     match ns.get_running_script(Some("deadbeef".into()), None, vec![]) {

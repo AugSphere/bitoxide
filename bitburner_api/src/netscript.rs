@@ -25,20 +25,7 @@ pub use running_script::TailProperties;
 /// Not all servers have all of these properties - optional properties
 /// are filled with default values.
 pub use server::Server;
-/// Collection of all functions passed to scripts.
-///
-/// # Basic usage example
-/// ```rust
-/// #[wasm_bindgen]
-/// pub async fn main_rs(ns: &NS) {
-///     // Basic ns functions can be accessed on the ns object
-///     ns.get_hostname();
-///     // Some related functions are gathered under a sub-property of the ns object
-///     ns.stock.get_price();
-///     // Most functions that return a promise need to be awaited.
-///     ns.hack('n00dles').await;
-/// }
-/// ```
+/// Collection of all Bitburner functions passed to scripts.
 pub use shims::NS;
 
 use crate::extensions::ToJsExt;
@@ -49,6 +36,9 @@ impl NS {
     /// # Examples
     /// ```rust
     /// // hello.rs
+    /// # use bitburner_api::netscript::Arg;
+    /// # use bitburner_api::NS;
+    /// # use bitburner_api::wasm_bindgen;
     /// #[wasm_bindgen]
     /// pub fn main_rs(ns: &NS) {
     ///    let args: Vec<Arg> = ns.args();
@@ -99,10 +89,14 @@ impl NS {
     ///
     /// # Examples
     /// ```rust
+    /// # use bitburner_api::NS;
+    /// # use bitburner_api::wasm_bindgen;
     /// #[wasm_bindgen]
     /// pub async fn main_rs(ns: &NS) {
-    ///     let amount = ns.hack("foodnstuff", None).await;
-    ///     ns.tprint(&format!("Got {amount}"));
+    ///     unsafe {
+    ///         let amount = ns.hack("foodnstuff", None).await;
+    ///         ns.tprint(&format!("Got {amount}"));
+    ///     }
     /// }
     /// ```
     /// ```text
@@ -260,8 +254,13 @@ impl NS {
     ///
     /// # Examples
     /// ```rust
+    /// # use bitburner_api::NS;
+    /// # use bitburner_api::wasm_bindgen;
+    /// #[wasm_bindgen]
+    /// pub fn main_rs(ns: &NS) {
     /// // For example, assume the following returns 0.01:
-    /// ns.hack_analyze("foodnstuff")
+    ///     ns.hack_analyze("foodnstuff").unwrap();
+    /// }
     /// ```
     /// This means that if hack the foodnstuff server using a single thread,
     /// then you will steal 1%, or 0.01 of its total money.
@@ -336,8 +335,13 @@ impl NS {
     ///
     /// # Examples
     /// ```rust
+    /// # use bitburner_api::NS;
+    /// # use bitburner_api::wasm_bindgen;
+    /// #[wasm_bindgen]
+    /// pub fn main_rs(ns: &NS) {
     /// // calculate number of grow threads to apply 2x growth multiplier on n00dles (does not include the additive growth).
-    /// let grow_threads = ns.growth_analyze("n00dles", 2.0).unwrap();
+    ///     let grow_threads = ns.growth_analyze("n00dles", 2.0, None).unwrap();
+    /// }
     /// ```
     /// # Arguments
     /// * host - Hostname of the target server.
@@ -382,9 +386,15 @@ impl NS {
     /// # Examples
     /// ```rust
     /// // This will count from 1 to 10 in your terminal, with one number every 5 seconds
-    /// for i in 1..=10 {
-    ///     ns.tprint(&i.to_string());
-    ///     ns.sleep(5000.0).await;
+    /// # use bitburner_api::{wasm_bindgen, wasm_bindgen_futures};
+    /// #[wasm_bindgen]
+    /// pub async fn main_rs(ns: &bitburner_api::NS) {
+    ///     for i in 1..=10 {
+    ///         ns.tprint(&i.to_string());
+    ///         unsafe {
+    ///             ns.sleep(5000.0).await;
+    ///         }
+    ///     }
     /// }
     /// ```
     ///
@@ -424,22 +434,27 @@ impl NS {
     ///
     /// # Examples
     /// ```rust
+    /// # use bitburner_api::NS;
+    /// # use bitburner_api::wasm_bindgen;
+    /// #[wasm_bindgen]
+    /// pub fn main_rs(ns: &NS) {
     /// // Default color coding.
-    /// ns.print("ERROR means something's wrong.");
-    /// ns.print("SUCCESS means everything's OK.");
-    /// ns.print("WARN Tread with caution!");
-    /// ns.print("WARNING, warning, danger, danger!");
-    /// ns.print("WARNing! Here be dragons.");
-    /// ns.print("INFO for your I's only (FYI).");
-    /// ns.print("INFOrmation overload!");
-    /// // Custom color coding.
-    /// let cyan = "\u{001b}[36m";
-    /// let green = "\u{001b}[32m";
-    /// let red = "\u{001b}[31m";
-    /// let reset = "\u{001b}[0m";
-    /// ns.print(&format!("{red}Ugh! What a mess.{reset}"));
-    /// ns.print(&format!("{green}Well done!{reset}"));
-    /// ns.print(&format!("{cyan}ERROR Should this be in red?{reset}"));
+    ///     ns.print("ERROR means something's wrong.");
+    ///     ns.print("SUCCESS means everything's OK.");
+    ///     ns.print("WARN Tread with caution!");
+    ///     ns.print("WARNING, warning, danger, danger!");
+    ///     ns.print("WARNing! Here be dragons.");
+    ///     ns.print("INFO for your I's only (FYI).");
+    ///     ns.print("INFOrmation overload!");
+    ///     // Custom color coding.
+    ///     let cyan = "\u{001b}[36m";
+    ///     let green = "\u{001b}[32m";
+    ///     let red = "\u{001b}[31m";
+    ///     let reset = "\u{001b}[0m";
+    ///     ns.print(&format!("{red}Ugh! What a mess.{reset}"));
+    ///     ns.print(&format!("{green}Well done!{reset}"));
+    ///     ns.print(&format!("{cyan}ERROR Should this be in red?{reset}"));
+    /// }
     /// ```
     pub fn print(self: &NS, to_print: &str) {
         self.print_shim(to_print)
@@ -516,18 +531,23 @@ impl NS {
     ///
     /// # Examples
     /// ```rust
-    /// // All servers that are one hop from the current server.
-    /// ns.tprint("Neighbors of current server.");
-    /// let neighbors = ns.scan(None).unwrap();
-    /// for neighbor in neighbors {
-    ///     ns.tprint(&neighbor);
-    /// }
-    /// // All neighbors of n00dles.
-    /// const TARGET: &str = "n00dles";
-    /// let neighbors = ns.scan(Some(TARGET)).unwrap();
-    /// ns.tprint(&format!("Neighbors of {TARGET}."));
-    /// for neighbor in neighbors {
-    ///     ns.tprint(&neighbor);
+    /// # use bitburner_api::NS;
+    /// # use bitburner_api::wasm_bindgen;
+    /// #[wasm_bindgen]
+    /// pub fn main_rs(ns: &NS) {
+    ///     // All servers that are one hop from the current server.
+    ///     ns.tprint("Neighbors of current server.");
+    ///     let neighbors = ns.scan(None).unwrap();
+    ///     for neighbor in neighbors {
+    ///         ns.tprint(&neighbor);
+    ///     }
+    ///     // All neighbors of n00dles.
+    ///     const TARGET: &str = "n00dles";
+    ///     let neighbors = ns.scan(Some(TARGET)).unwrap();
+    ///     ns.tprint(&format!("Neighbors of {TARGET}."));
+    ///     for neighbor in neighbors {
+    ///         ns.tprint(&neighbor);
+    ///     }
     /// }
     /// ```
     pub fn scan(self: &NS, host: Option<&str>) -> Result<Vec<String>, BitburnerError> {
@@ -611,8 +631,13 @@ impl NS {
     ///
     /// @example
     /// ```rust
-    /// if !ns.has_root_access("foodnstuff").unwrap() {
-    ///     ns.nuke("foodnstuff").unwrap();
+    /// # use bitburner_api::NS;
+    /// # use bitburner_api::wasm_bindgen;
+    /// #[wasm_bindgen]
+    /// pub fn main_rs(ns: &NS) {
+    ///     if !ns.has_root_access("foodnstuff").unwrap() {
+    ///         ns.nuke("foodnstuff").unwrap();
+    ///     }
     /// }
     /// ```
     pub fn has_root_access(self: &NS, host: &str) -> Result<bool, BitburnerError> {
