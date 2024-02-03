@@ -258,7 +258,7 @@ impl NS {
     /// # use bitburner_api::wasm_bindgen;
     /// #[wasm_bindgen]
     /// pub fn main_rs(ns: &NS) {
-    /// // For example, assume the following returns 0.01:
+    ///     // For example, assume the following returns 0.01:
     ///     ns.hack_analyze("foodnstuff").unwrap();
     /// }
     /// ```
@@ -339,7 +339,8 @@ impl NS {
     /// # use bitburner_api::wasm_bindgen;
     /// #[wasm_bindgen]
     /// pub fn main_rs(ns: &NS) {
-    /// // calculate number of grow threads to apply 2x growth multiplier on n00dles (does not include the additive growth).
+    ///     // calculate number of grow threads to apply 2x growth multiplier on n00dles
+    ///     // (does not include the additive growth)
     ///     let grow_threads = ns.growth_analyze("n00dles", 2.0, None).unwrap();
     /// }
     /// ```
@@ -438,7 +439,7 @@ impl NS {
     /// # use bitburner_api::wasm_bindgen;
     /// #[wasm_bindgen]
     /// pub fn main_rs(ns: &NS) {
-    /// // Default color coding.
+    ///     // Default color coding.
     ///     ns.print("ERROR means something's wrong.");
     ///     ns.print("SUCCESS means everything's OK.");
     ///     ns.print("WARN Tread with caution!");
@@ -491,8 +492,6 @@ impl NS {
 
     /// Open the tail window of a script.
     ///
-    /// **RAM cost: 0 GB**
-    ///
     /// Opens a script’s logs. This is functionally the same as the tail
     /// Terminal command.
     ///
@@ -504,11 +503,11 @@ impl NS {
     /// uniquely identified by both their names and arguments.
     ///
     /// # Arguments
-    /// * fn - Optional. Filename or PID of the script being tailed. If omitted,
-    ///   the current script is tailed.
-    /// * host - Optional. Hostname of the script being tailed. Defaults to the
-    ///   server this script is running on. If args are specified, this is not
-    ///   optional.
+    /// * filename - Optional. Filename or PID of the script being tailed. If
+    ///   omitted, the current script is tailed.
+    /// * hostname - Optional. Hostname of the script being tailed. Defaults to
+    ///   the server this script is running on. If args are specified, this is
+    ///   not optional.
     /// * args - Arguments for the script being tailed.
     pub fn tail(
         self: &NS,
@@ -629,7 +628,7 @@ impl NS {
     /// Returns a boolean indicating whether or not the player has root access
     /// to the specified target server.
     ///
-    /// @example
+    /// # Examples
     /// ```rust
     /// # use bitburner_api::NS;
     /// # use bitburner_api::wasm_bindgen;
